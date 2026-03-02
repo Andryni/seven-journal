@@ -4,14 +4,15 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import { useTradeStore } from '../store/useTradeStore';
 import { useDebriefStore } from '../store/useDebriefStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { useTranslation } from '../hooks/useTranslation';
 
-const NAV_ITEMS = [
-    { to: '/app/dashboard', label: 'Dashboard', Icon: LayoutDashboard, exact: true },
-    { to: '/app/trades', label: 'Trades', Icon: List, exact: false },
-    { to: '/app/calendar', label: 'Calendar', Icon: CalendarIcon, exact: false },
-    { to: '/app/analytics', label: 'Analytics', Icon: BarChart2, exact: false },
-    { to: '/app/debrief', label: 'Debrief', Icon: BookOpen, exact: false },
-    { to: '/app/settings', label: 'Settings', Icon: Settings, exact: true },
+const NAV_ITEMS = (t: any) => [
+    { to: '/app/dashboard', label: t.common.dashboard, Icon: LayoutDashboard, exact: true },
+    { to: '/app/trades', label: t.common.journal, Icon: List, exact: false },
+    { to: '/app/calendar', label: t.common.calendar, Icon: CalendarIcon, exact: false },
+    { to: '/app/analytics', label: t.common.analytics, Icon: BarChart2, exact: false },
+    { to: '/app/debrief', label: t.navigation.debriefs, Icon: BookOpen, exact: false },
+    { to: '/app/settings', label: t.common.settings, Icon: Settings, exact: true },
 ];
 
 function CandleDeco() {
@@ -33,6 +34,7 @@ function AccountSwitcher() {
     const allAccounts = useAuthStore(state => state.accounts);
     const setActiveAccount = useAuthStore(state => state.setActiveAccount);
     const navigate = useNavigate();
+    const { t } = useTranslation();
 
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
@@ -52,9 +54,9 @@ function AccountSwitcher() {
         return (
             <div className="mx-3 mb-3">
                 <Link to="/app/settings"
-                    className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl text-xs font-bold transition-all"
+                    className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center justify-center"
                     style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.2)', color: '#a78bfa' }}>
-                    <Plus size={13} /> Create Trading Account
+                    <Plus size={13} /> {t.settings.createAccount}
                 </Link>
             </div>
         );
@@ -88,7 +90,7 @@ function AccountSwitcher() {
                     style={{ background: '#0f0f1a', border: '1px solid rgba(124,58,237,0.25)' }}>
                     <div className="px-3 py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                         <p className="text-[9px] uppercase tracking-widest font-bold" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                            Trading Accounts
+                            {t.settings.yourAccounts}
                         </p>
                     </div>
                     <div className="max-h-44 overflow-y-auto custom-scrollbar">
@@ -128,7 +130,7 @@ function AccountSwitcher() {
                             style={{ color: 'rgba(255,255,255,0.35)' }}
                             onMouseEnter={e => (e.currentTarget.style.color = '#a78bfa')}
                             onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.35)')}>
-                            <Plus size={12} /> New account
+                            <Plus size={12} /> {t.navigation.home}
                         </button>
                     </div>
                 </div>
@@ -144,13 +146,16 @@ export function Layout() {
     const currentUser = useAuthStore(state => state.currentUser);
     const logout = useAuthStore(state => state.logout);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const { t } = useTranslation();
+
+    const navItems = NAV_ITEMS(t);
 
     useEffect(() => { setIsSidebarOpen(false); }, [location.pathname]);
 
     useEffect(() => { if (!currentUser) navigate('/signin'); }, [currentUser, navigate]);
     if (!currentUser) return null;
 
-    const currentPage = NAV_ITEMS.find(n =>
+    const currentPage = navItems.find(n =>
         n.exact ? location.pathname === n.to : location.pathname.startsWith(n.to)
     );
 
@@ -278,8 +283,8 @@ export function Layout() {
 
                 {/* Nav */}
                 <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
-                    <p className="section-label px-2 mb-3">Navigation</p>
-                    {NAV_ITEMS.slice(0, 5).map(({ to, label, Icon, exact }) => {
+                    <p className="section-label px-2 mb-3">{t.navigation.overview}</p>
+                    {navItems.slice(0, 5).map(({ to, label, Icon, exact }) => {
                         const isActive = exact ? location.pathname === to : location.pathname.startsWith(to);
                         return (
                             <Link key={to} to={to} className={`nav-item ${isActive ? 'active' : ''}`}>
@@ -291,8 +296,8 @@ export function Layout() {
                     })}
 
                     <div className="my-3 h-px bg-white/[0.05]" />
-                    <p className="section-label px-2 mb-3">Account</p>
-                    {NAV_ITEMS.slice(5).map(({ to, label, Icon, exact }) => {
+                    <p className="section-label px-2 mb-3">{t.settings.accounts}</p>
+                    {navItems.slice(5).map(({ to, label, Icon, exact }) => {
                         const isActive = exact ? location.pathname === to : location.pathname.startsWith(to);
                         return (
                             <Link key={to} to={to} className={`nav-item ${isActive ? 'active' : ''}`}>
@@ -326,7 +331,7 @@ export function Layout() {
                         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#ef4444'; (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.05)'; }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.35)'; (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
                         <LogOut size={15} />
-                        <span className="font-medium">Log out</span>
+                        <span className="font-medium">{t.common.logout}</span>
                     </button>
                 </div>
             </aside>
@@ -349,7 +354,7 @@ export function Layout() {
                         <div className="flex items-center gap-1.5 px-2 py-0.5 md:px-2.5 md:py-1 rounded-full text-[9px] md:text-[10px] font-bold border"
                             style={{ color: 'rgba(16,185,129,0.8)', borderColor: 'rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.05)' }}>
                             <span className="w-1 md:w-1.5 h-1 md:h-1.5 rounded-full bg-profit animate-blink" />
-                            {isTradesLoading || isDebriefsLoading ? 'SYNC' : 'LIVE'}
+                            {isTradesLoading || isDebriefsLoading ? t.common.sync : t.common.live}
                         </div>
                     </div>
                     <div className="flex items-center gap-2 md:gap-3">
@@ -368,7 +373,7 @@ export function Layout() {
                             </div>
                         </div>
                         <Link to="/app/trades/new" className="btn-primary text-[10px] md:text-xs px-3 py-1.5 md:px-4 md:py-2">
-                            <span className="text-base md:text-base leading-none">+</span> <span className="hidden xs:inline">New Trade</span>
+                            <span className="text-base md:text-base leading-none">+</span> <span className="hidden xs:inline">{t.common.newTrade}</span>
                         </Link>
                     </div>
                 </header>

@@ -3,15 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { useTradeStore } from '../store/useTradeStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useDebriefStore } from '../store/useDebriefStore';
-import { Download, AlertTriangle, User, Database, Wallet, Plus, CheckCircle, Check } from 'lucide-react';
+import { Languages, Download, AlertTriangle, User, Database, Wallet, Plus, CheckCircle, Check } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { format } from 'date-fns';
+import { useTranslation } from '../hooks/useTranslation';
 
-const TABS = [
-    { id: 'Profile', Icon: User, label: 'Profile' },
-    { id: 'Accounts', Icon: Wallet, label: 'Accounts' },
-    { id: 'Data', Icon: Database, label: 'Data' },
+const TABS = (t: any) => [
+    { id: 'Profile', Icon: User, label: t.settings.profile },
+    { id: 'Accounts', Icon: Wallet, label: t.settings.accounts },
+    { id: 'Data', Icon: Database, label: t.settings.data },
 ];
 
 export function Settings() {
@@ -24,6 +25,10 @@ export function Settings() {
     const logout = useAuthStore(state => state.logout);
     const accounts = useAuthStore(state => state.accounts);
     const setActiveAccount = useAuthStore(state => state.setActiveAccount);
+    const updateUser = useAuthStore(state => state.updateUser);
+    const { t, lang } = useTranslation();
+
+    const tabs = TABS(t);
 
     const exportCSV = () => {
         if (trades.length === 0) return alert("No trades to export.");
@@ -69,12 +74,12 @@ export function Settings() {
         <div className="space-y-6 animate-fade-scale">
             <div>
                 <p className="section-label mb-1">Configuration</p>
-                <h2 className="text-2xl font-bold text-white">Settings</h2>
+                <h2 className="text-2xl font-bold text-white">{t.common.settings}</h2>
             </div>
 
             {/* Tab Bar */}
             <div className="flex items-center gap-2 p-1 rounded-2xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                {TABS.map(({ id, Icon, label }) => (
+                {tabs.map(({ id, Icon, label }) => (
                     <button key={id} onClick={() => setActiveTab(id)}
                         className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex-1 justify-center"
                         style={{
@@ -110,8 +115,8 @@ export function Settings() {
                         </div>
 
                         {[
-                            { label: 'Username', val: currentUser?.username },
-                            { label: 'Email', val: currentUser?.email },
+                            { label: t.settings.username, val: currentUser?.username },
+                            { label: t.settings.email, val: currentUser?.email },
                         ].map(({ label, val }) => (
                             <div key={label}>
                                 <label className="section-label mb-2 block">{label}</label>
@@ -119,11 +124,37 @@ export function Settings() {
                             </div>
                         ))}
 
+                        {/* Language Selector */}
+                        <div>
+                            <label className="section-label mb-2 block flex items-center gap-2">
+                                <Languages size={14} className="text-primary-light" />
+                                {t.settings.language}
+                            </label>
+                            <div className="grid grid-cols-2 gap-3">
+                                {[
+                                    { id: 'en', label: 'English', flag: '🇺🇸' },
+                                    { id: 'fr', label: 'Français', flag: '🇫🇷' },
+                                ].map(({ id, label, flag }) => (
+                                    <button key={id}
+                                        onClick={() => updateUser({ preferredLanguage: id as any })}
+                                        className="p-3 rounded-xl transition-all border text-sm font-bold flex items-center justify-center gap-2"
+                                        style={{
+                                            background: lang === id ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.02)',
+                                            borderColor: lang === id ? 'rgba(124,58,237,0.4)' : 'rgba(255,255,255,0.06)',
+                                            color: lang === id ? '#a78bfa' : 'rgba(255,255,255,0.3)',
+                                        }}>
+                                        <span>{flag}</span>
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
                         <div className="pt-4 border-t border-white/[0.05]">
                             <button onClick={async () => { await logout(); navigate('/'); }}
                                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-loss transition-all"
                                 style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
-                                Sign out of Seven Journal
+                                {t.settings.signout}
                             </button>
                         </div>
                     </div>
