@@ -193,13 +193,18 @@ export function Analytics() {
             return Object.entries(groups).map(([name, data]) => ({ name, ...data }));
         };
 
-        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const dayPerformance = days.map((day, idx) => {
+        // Order Mon→Sun (1..6, 0)
+        const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+        const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayPerformance = DAY_ORDER.map(idx => {
+            const day = DAY_NAMES[idx];
             const dayTrades = closedTrades.filter(t => getDay(parseISO(t.openedAt)) === idx);
-            const win = dayTrades.filter(t => (t.netPnl || 0) > 0).reduce((acc, t) => acc + (t.netPnl || 0), 0);
-            const loss = Math.abs(dayTrades.filter(t => (t.netPnl || 0) < 0).reduce((acc, t) => acc + (t.netPnl || 0), 0));
-            return { name: day, win, loss };
-        }).filter(d => d.win > 0 || d.loss > 0);
+            const win = parseFloat(dayTrades.filter(t => (t.netPnl || 0) > 0).reduce((acc, t) => acc + (t.netPnl || 0), 0).toFixed(2));
+            const loss = parseFloat(Math.abs(dayTrades.filter(t => (t.netPnl || 0) < 0).reduce((acc, t) => acc + (t.netPnl || 0), 0)).toFixed(2));
+            const net = parseFloat((win - loss).toFixed(2));
+            const trades = dayTrades.length;
+            return { name: day, short: day.slice(0, 3), win, loss, net, trades };
+        }).filter(d => d.trades > 0);
 
         return {
             winsCount, lossesCount, besCount, winrate, totalPnL, profitFactor,
@@ -448,47 +453,98 @@ export function Analytics() {
 
                 {/* ── Day Analysis (Multiple Bar Style) ───────────── */}
                 <Card className="glass-card p-0 border-none overflow-hidden relative">
-                    <CardHeader className="p-7 pb-2">
-                        <CardDescription className="section-label mb-1">BY DAY</CardDescription>
-                        <CardTitle className="text-xl font-bold flex items-center gap-2 text-white">
-                            <LucideCalendar size={20} className="text-primary-light" /> Daily Performance
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-7 pt-4">
-                        <ChartContainer config={timeframeConfig} className="min-h-[300px] w-full">
-                            <BarChart accessibilityLayer data={stats.dayPerformance} barGap={8}>
-                                <defs>
-                                    <linearGradient id="dayWin" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
-                                        <stop offset="100%" stopColor="#10b981" stopOpacity={0.5} />
-                                    </linearGradient>
-                                    <linearGradient id="dayLoss" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
-                                        <stop offset="100%" stopColor="#ef4444" stopOpacity={0.5} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.03)" />
-                                <XAxis
-                                    dataKey="name"
-                                    tickLine={false}
-                                    tickMargin={10}
-                                    axisLine={false}
-                                    tickFormatter={(value) => value.slice(0, 3)}
-                                    tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 11, fontFamily: 'JetBrains Mono', fontWeight: 600 }}
-                                />
-                                <ChartTooltip
-                                    cursor={{ fill: 'rgba(255,255,255,0.02)' }}
-                                    content={<ChartTooltipContent indicator="dashed" className="glass-card border-primary/20 shadow-2xl" />}
-                                />
-                                <Bar dataKey="win" fill="url(#dayWin)" radius={[4, 4, 0, 0]} stroke="#10b981" strokeWidth={1} strokeOpacity={0.2} />
-                                <Bar dataKey="loss" fill="url(#dayLoss)" radius={[4, 4, 0, 0]} stroke="#ef4444" strokeWidth={1} strokeOpacity={0.2} />
-                            </BarChart>
-                        </ChartContainer>
-                    </CardContent>
-                    <CardFooter className="px-7 pb-7 pt-0 flex-col items-start gap-1 text-sm text-white/40">
-                        <div className="flex gap-2 leading-none font-medium text-white/60">
-                            Journée la plus rentable : {stats.dayPerformance.sort((a, b) => (b.win - b.loss) - (a.win - a.loss))[0]?.name || 'N/A'} <Award className="h-4 w-4" />
+                    <CardHeader className="p-7 pb-3">
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <CardDescription className="section-label mb-1">BY DAY</CardDescription>
+                                <CardTitle className="text-xl font-bold flex items-center gap-2 text-white">
+                                    <LucideCalendar size={20} className="text-primary-light" /> Daily Performance
+                                </CardTitle>
+                            </div>
+                            {/* Legend */}
+                            <div className="flex items-center gap-3 pt-1">
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-3 h-3 rounded-sm" style={{ background: 'linear-gradient(180deg,#10b981,#10b981aa)' }} />
+                                    <span className="text-[11px] font-bold font-mono text-white/50">WINS</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-3 h-3 rounded-sm" style={{ background: 'linear-gradient(180deg,#ef4444,#ef4444aa)' }} />
+                                    <span className="text-[11px] font-bold font-mono text-white/50">LOSSES</span>
+                                </div>
+                            </div>
                         </div>
+                    </CardHeader>
+                    <CardContent className="px-7 pb-4 pt-0">
+                        <div className="h-[280px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={stats.dayPerformance} barGap={6} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                                    <defs>
+                                        <linearGradient id="dayWin" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
+                                            <stop offset="100%" stopColor="#10b981" stopOpacity={0.45} />
+                                        </linearGradient>
+                                        <linearGradient id="dayLoss" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
+                                            <stop offset="100%" stopColor="#ef4444" stopOpacity={0.45} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.04)" strokeDasharray="0" />
+                                    <XAxis
+                                        dataKey="short"
+                                        tickLine={false}
+                                        tickMargin={10}
+                                        axisLine={false}
+                                        tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 12, fontFamily: 'JetBrains Mono', fontWeight: 700 }}
+                                    />
+                                    <YAxis
+                                        tickLine={false}
+                                        axisLine={false}
+                                        tickFormatter={(v) => `$${v}`}
+                                        tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10, fontFamily: 'JetBrains Mono' }}
+                                        width={52}
+                                    />
+                                    <Tooltip
+                                        cursor={{ fill: 'rgba(255,255,255,0.025)', radius: 6 }}
+                                        contentStyle={{ backgroundColor: '#111117', borderColor: 'rgba(124,58,237,0.35)', borderRadius: '14px', color: '#fff', fontSize: '12px', fontFamily: 'JetBrains Mono', boxShadow: '0 20px 60px rgba(0,0,0,0.7)', padding: '10px 14px' }}
+                                        formatter={(v: any, name?: string) => [
+                                            <span style={{ color: name === 'win' ? '#10b981' : '#ef4444', fontWeight: 700 }}>{`$${Number(v).toFixed(2)}`}</span>,
+                                            name === 'win' ? '✅ Profit' : '❌ Loss'
+                                        ]}
+                                        labelFormatter={(label) => <span style={{ color: '#a78bfa', fontWeight: 700, fontSize: '13px' }}>{label}</span>}
+                                    />
+                                    <Bar dataKey="win" fill="url(#dayWin)" radius={[5, 5, 0, 0]} stroke="#10b981" strokeWidth={1} strokeOpacity={0.25} />
+                                    <Bar dataKey="loss" fill="url(#dayLoss)" radius={[5, 5, 0, 0]} stroke="#ef4444" strokeWidth={1} strokeOpacity={0.25} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </CardContent>
+                    <CardFooter className="px-7 pb-6 pt-0 gap-4 flex-wrap">
+                        {(() => {
+                            const sorted = [...stats.dayPerformance].sort((a, b) => b.net - a.net);
+                            const best = sorted[0];
+                            const worst = sorted[sorted.length - 1];
+                            return (
+                                <>
+                                    {best && (
+                                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                                            <Award size={13} className="text-profit" />
+                                            <span className="text-[11px] font-bold font-mono text-white/60">Best:</span>
+                                            <span className="text-[11px] font-black font-mono text-profit">{best.short} +${best.net.toFixed(0)}</span>
+                                        </div>
+                                    )}
+                                    {worst && worst.net < 0 && (
+                                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                            <Flame size={13} className="text-loss" />
+                                            <span className="text-[11px] font-bold font-mono text-white/60">Worst:</span>
+                                            <span className="text-[11px] font-black font-mono text-loss">{worst.short} -${Math.abs(worst.net).toFixed(0)}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl ml-auto" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                                        <span className="text-[11px] font-bold font-mono text-white/35">{stats.dayPerformance.reduce((a, d) => a + d.trades, 0)} trades / {stats.dayPerformance.length} days</span>
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </CardFooter>
                 </Card>
             </div>
