@@ -57,7 +57,7 @@ export function Debrief() {
         data.accountId = activeAccountId;
 
         try {
-            if (currentDebrief) {
+            if (currentDebrief && currentDebrief.id && typeof currentDebrief.id === 'string') {
                 await updateDebrief(currentDebrief.id, data);
             } else {
                 await addDebrief(data);

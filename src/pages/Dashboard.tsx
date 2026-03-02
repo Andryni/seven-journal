@@ -232,7 +232,7 @@ export function Dashboard() {
                                     <Tooltip
                                         contentStyle={{ backgroundColor: '#111117', borderColor: 'rgba(124,58,237,0.3)', color: '#fff', borderRadius: '12px', fontFamily: 'JetBrains Mono', fontSize: '12px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
                                         itemStyle={{ color: isProfit ? '#10b981' : '#ef4444' }}
-                                        formatter={(v: number) => [`$${v.toFixed(2)}`, 'Cumulative PnL']}
+                                        formatter={(v: number | undefined) => [`$${(v ?? 0).toFixed(2)}`, 'Cumulative PnL']}
                                     />
                                     <Area type="monotone" dataKey="pnl" stroke={isProfit ? '#10b981' : '#ef4444'} strokeWidth={3} fillOpacity={1} fill="url(#eqGrad)" dot={false} animationDuration={1500} />
                                 </AreaChart>

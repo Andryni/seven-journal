@@ -4,7 +4,7 @@ import { useTradeStore } from '../store/useTradeStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { Link } from 'react-router-dom';
 import {
-    ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Minus,
+    ChevronLeft, ChevronRight, TrendingUp, TrendingDown,
     BookOpen, CalendarDays, Activity, Target, BarChart3, Flame
 } from 'lucide-react';
 
