@@ -163,21 +163,29 @@ export function Trades() {
             id: 'actions',
             cell: props => (
                 <div className="flex items-center gap-2 opacity-0 group-hover/row:opacity-100 transition-opacity duration-200">
-                    <Link to={`/app/trades/${props.row.original.id}`}
-                        className="p-1.5 rounded-lg transition-colors hover:bg-cyan-500/10" style={{ color: 'rgba(255,255,255,0.3)' }}
-                        onMouseEnter={e => (e.currentTarget.style.color = '#06b6d4')} onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}>
-                        <ExternalLink size={13} />
-                    </Link>
-                    <Link to={`/app/trades/${props.row.original.id}/edit`}
-                        className="p-1.5 rounded-lg transition-colors" style={{ color: 'rgba(255,255,255,0.3)' }}
-                        onMouseEnter={e => (e.currentTarget.style.color = '#a78bfa')} onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}>
-                        <Edit2 size={13} />
-                    </Link>
-                    <button onClick={() => { if (confirm('Delete this trade?')) deleteTrade(props.row.original.id); }}
-                        className="p-1.5 rounded-lg transition-colors" style={{ color: 'rgba(255,255,255,0.3)' }}
-                        onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')} onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}>
-                        <Trash2 size={13} />
-                    </button>
+                    {props.row.original.id && (
+                        <>
+                            <Link to={`/app/trades/${props.row.original.id}`}
+                                className="p-1.5 rounded-lg transition-colors hover:bg-cyan-500/10" style={{ color: 'rgba(255,255,255,0.3)' }}
+                                onMouseEnter={e => (e.currentTarget.style.color = '#06b6d4')} onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}>
+                                <ExternalLink size={13} />
+                            </Link>
+                            <Link to={`/app/trades/${props.row.original.id}/edit`}
+                                className="p-1.5 rounded-lg transition-colors" style={{ color: 'rgba(255,255,255,0.3)' }}
+                                onMouseEnter={e => (e.currentTarget.style.color = '#a78bfa')} onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}>
+                                <Edit2 size={13} />
+                            </Link>
+                            <button onClick={() => {
+                                if (confirm('Delete this trade? This cannot be undone.')) {
+                                    if (props.row.original.id) deleteTrade(props.row.original.id);
+                                }
+                            }}
+                                className="p-1.5 rounded-lg transition-colors" style={{ color: 'rgba(255,255,255,0.3)' }}
+                                onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')} onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}>
+                                <Trash2 size={13} />
+                            </button>
+                        </>
+                    )}
                 </div>
             )
         }),

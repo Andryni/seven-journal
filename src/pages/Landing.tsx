@@ -104,7 +104,7 @@ export function LandingPage() {
     const heroRef = useRef<HTMLDivElement>(null);
 
     const handleDemo = () => {
-        register({ username: 'DemoTrader', email: 'demo@example.com', passwordHash: 'demo', preferredLanguage: 'en', theme: 'dark' });
+        register('DemoTrader', 'demo@example.com', 'demo123456');
         useAuthStore.getState().updateUser({ activeAccountId: 'demo-account' });
         loadDemoData(getDemoTrades());
         navigate('/app/dashboard');

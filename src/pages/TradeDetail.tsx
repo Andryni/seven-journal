@@ -26,7 +26,7 @@ export function TradeDetail() {
 
     const handleDelete = () => {
         if (confirm("Delete this trade? This cannot be undone.")) {
-            deleteTrade(trade.id);
+            if (trade.id) deleteTrade(trade.id);
             navigate('/app/trades');
         }
     };
