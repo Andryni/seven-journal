@@ -75,10 +75,10 @@ export function Debrief() {
     const bias = form.watch('htfBias');
 
     return (
-        <div className="flex h-[calc(100vh-8rem)] gap-6 animate-fade-scale">
+        <div className="flex flex-col lg:flex-row gap-6 lg:h-[calc(100vh-8rem)] animate-fade-scale">
 
             {/* ── Sidebar ─────────────────────────────────────── */}
-            <aside className="w-72 flex-shrink-0 flex flex-col gap-4">
+            <aside className="w-full lg:w-72 flex-shrink-0 flex flex-col gap-4">
                 {/* Date Selector */}
                 <div className="glass-card p-4">
                     <p className="section-label mb-3">Select Date</p>
@@ -131,12 +131,12 @@ export function Debrief() {
                     <div className="glass-card p-6 relative overflow-hidden candle-bg">
                         <div className="absolute right-0 top-0 w-64 h-full pointer-events-none"
                             style={{ background: 'radial-gradient(ellipse at 80% 50%, rgba(124,58,237,0.1), transparent 60%)' }} />
-                        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
                                 <p className="section-label mb-1">Daily Review</p>
-                                <h2 className="text-xl font-bold flex items-center gap-2">
+                                <h2 className="text-lg md:text-xl font-bold flex items-center gap-2">
                                     <BookOpen size={18} className="text-primary-light" />
-                                    {format(parseISO(selectedDateStr), 'EEEE, MMMM dd, yyyy')}
+                                    <span className="truncate">{format(parseISO(selectedDateStr), 'EEEE, MMM dd, yyyy')}</span>
                                 </h2>
                             </div>
                             <button type="submit" disabled={isSaving}
@@ -156,17 +156,17 @@ export function Debrief() {
                     </div>
 
                     {/* Day Stats */}
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                         {[
                             { label: 'Trades', val: dayTrades.length, color: 'text-white', icon: <Activity size={14} /> },
                             { label: 'Net P&L', val: `${dayPnl >= 0 ? '+' : ''}$${dayPnl.toFixed(2)}`, color: dayPnl >= 0 ? 'text-profit' : 'text-loss', icon: dayPnl >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} /> },
                             { label: 'Win Rate', val: `${dayWinrate.toFixed(0)}%`, color: dayWinrate >= 50 ? 'text-profit' : 'text-loss', icon: <Star size={14} /> },
-                        ].map(({ label, val, color, icon }) => (
-                            <div key={label} className="glass-panel px-5 py-4 flex items-center gap-4">
-                                <div className="p-2 rounded-xl bg-white/5">{icon}</div>
+                        ].map(({ label, val, color, icon }, i) => (
+                            <div key={label} className={`glass-panel px-4 py-3 md:px-5 md:py-4 flex items-center gap-3 md:gap-4 ${i === 2 ? 'col-span-2 lg:col-span-1' : ''}`}>
+                                <div className="p-2 rounded-xl bg-white/5 flex-shrink-0">{icon}</div>
                                 <div>
-                                    <p className="section-label mb-0.5">{label}</p>
-                                    <p className={`text-xl font-black font-mono ${color}`}>{val}</p>
+                                    <p className="section-label mb-0.5 text-[9px] md:text-xs">{label}</p>
+                                    <p className={`text-base md:text-xl font-black font-mono ${color}`}>{val}</p>
                                 </div>
                             </div>
                         ))}
@@ -178,18 +178,18 @@ export function Debrief() {
                             <span className="section-number">1</span>
                             <h3 className="font-bold">Market Analysis</h3>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-4">
                             {(['Bullish', 'Neutral', 'Bearish', 'No Bias'] as const).map(b => (
                                 <label
                                     key={b}
-                                    className="flex items-center gap-3 p-4 rounded-xl cursor-pointer transition-all duration-200 border"
+                                    className="flex items-center gap-2 md:gap-3 p-3 md:p-4 rounded-xl cursor-pointer transition-all duration-200 border"
                                     style={{
                                         background: bias === b ? (b === 'Bullish' ? 'rgba(16,185,129,0.12)' : b === 'Bearish' ? 'rgba(239,68,68,0.12)' : 'rgba(124,58,237,0.12)') : 'rgba(255,255,255,0.02)',
                                         borderColor: bias === b ? (b === 'Bullish' ? 'rgba(16,185,129,0.35)' : b === 'Bearish' ? 'rgba(239,68,68,0.35)' : 'rgba(124,58,237,0.35)') : 'rgba(255,255,255,0.06)',
                                     }}>
                                     <input type="radio" value={b} {...form.register('htfBias')} className="sr-only" />
-                                    <span className="text-lg">{b === 'Bullish' ? '📈' : b === 'Bearish' ? '📉' : b === 'Neutral' ? '↔️' : '🚫'}</span>
-                                    <span className="font-semibold text-sm">{b}</span>
+                                    <span className="text-base md:text-lg">{b === 'Bullish' ? '📈' : b === 'Bearish' ? '📉' : b === 'Neutral' ? '↔️' : '🚫'}</span>
+                                    <span className="font-semibold text-xs md:text-sm">{b}</span>
                                 </label>
                             ))}
                         </div>
@@ -227,7 +227,7 @@ export function Debrief() {
                                 ))}
                             </div>
                         </div>
-                        <div className="grid md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {[
                                 { label: 'Key Mistakes', field: 'mistakes', ph: 'What went wrong?' },
                                 { label: 'Good Actions', field: 'goodActions', ph: 'Discipline wins?' },
@@ -261,7 +261,7 @@ export function Debrief() {
                                         <label key={rating} className="cursor-pointer group">
                                             <input type="radio" value={rating} {...form.register('dayRating', { valueAsNumber: true })} className="sr-only" />
                                             <Star
-                                                size={36}
+                                                size={window.innerWidth < 768 ? 24 : 36}
                                                 fill={form.watch('dayRating') >= rating ? '#f59e0b' : 'none'}
                                                 stroke={form.watch('dayRating') >= rating ? '#f59e0b' : '#3f3f46'}
                                                 className="transition-all duration-200 group-hover:scale-110"
