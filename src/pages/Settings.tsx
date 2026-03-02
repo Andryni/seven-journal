@@ -276,6 +276,7 @@ export function Settings() {
 }
 
 const AccountForm = ({ onCreated }: { onCreated: () => void }) => {
+    const { t } = useTranslation();
     const addAccount = useAuthStore(state => state.addAccount);
     const currentUser = useAuthStore(state => state.currentUser);
     const [name, setName] = useState('');

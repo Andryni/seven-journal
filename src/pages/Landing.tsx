@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useRef } from 'react';
 import { useTranslation } from '../hooks/useTranslation';
+import type { TranslationKeys } from '../lib/translations';
 
 /* ── Mini candlestick SVG chart ─────────────────────────────── */
 function SVGChart() {
@@ -81,7 +82,7 @@ function TickerBanner() {
 }
 
 /* ── Feature card ───────────────────────────────────────────── */
-const FEATURES = (t: any) => [
+const FEATURES = (t: TranslationKeys) => [
     { Icon: LayoutDashboard, color: '#7c3aed', title: t.landing.dashboardTitle, desc: t.landing.dashboardDesc },
     { Icon: Activity, color: '#06b6d4', title: t.landing.journalTitle, desc: t.landing.journalDesc },
     { Icon: Calendar, color: '#10b981', title: t.landing.calendarTitle, desc: t.landing.calendarDesc },
@@ -90,7 +91,7 @@ const FEATURES = (t: any) => [
     { Icon: Shield, color: '#34d399', title: t.landing.riskTitle, desc: t.landing.riskDesc },
 ];
 
-const STATS = (t: any) => [
+const STATS = (t: TranslationKeys) => [
     { val: '+$28,400', label: t.landing.demoPnL, color: '#10b981' },
     { val: '68.5%', label: t.landing.avgWinRate, color: '#7c3aed' },
     { val: '3.2 R:R', label: t.landing.rrRatio, color: '#06b6d4' },
@@ -111,7 +112,6 @@ export function LandingPage() {
         navigate('/app/dashboard');
     };
 
-    const stats = STATS(t);
     const features = FEATURES(t);
 
     return (
@@ -270,7 +270,7 @@ export function LandingPage() {
             <section id="stats" className="relative z-10 py-20 px-6">
                 <div className="max-w-5xl mx-auto">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {STATS.map(({ val, label, color }) => (
+                        {STATS(t).map(({ val, label, color }) => (
                             <div key={label} className="flex flex-col items-center text-center p-6 rounded-2xl"
                                 style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
                                 <div className="text-4xl font-black font-mono mb-2" style={{ color }}>{val}</div>
