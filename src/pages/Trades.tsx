@@ -262,20 +262,25 @@ export function Trades() {
 
                         {/* Filter panel */}
                         {showFilters && (
-                            <div className="absolute top-full mt-2 left-0 z-50 p-5 rounded-2xl shadow-2xl w-[520px]"
+                            <div className="fixed md:absolute inset-x-4 md:inset-x-auto top-1/2 md:top-full -translate-y-1/2 md:translate-y-0 md:left-0 z-50 p-5 rounded-2xl shadow-2xl w-auto md:w-[520px] max-h-[85vh] overflow-y-auto custom-scrollbar"
                                 style={{ background: '#0e0e18', border: '1px solid rgba(124,58,237,0.25)' }}>
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="flex items-center gap-2">
                                         <Filter size={14} style={{ color: '#a78bfa' }} />
                                         <span className="font-bold text-white text-sm">Filter Trades</span>
                                     </div>
-                                    {activeFilters > 0 && (
-                                        <button onClick={clearAllFilters} className="text-xs font-bold transition-colors"
-                                            style={{ color: '#ef4444' }}>Clear all</button>
-                                    )}
+                                    <div className="flex items-center gap-3">
+                                        {activeFilters > 0 && (
+                                            <button onClick={clearAllFilters} className="text-xs font-bold transition-colors"
+                                                style={{ color: '#ef4444' }}>Clear</button>
+                                        )}
+                                        <button onClick={() => setShowFilters(false)} className="p-1 md:hidden">
+                                            <X size={18} style={{ color: 'rgba(255,255,255,0.3)' }} />
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                                     {/* Pair */}
                                     <FilterSelect label="Pair / Symbol" value={fPair} onChange={setFPair}
                                         options={[{ value: '', label: 'All Pairs' }, ...pairs.map(p => ({ value: p, label: p }))]} />
@@ -345,16 +350,16 @@ export function Trades() {
 
             {/* ── Quick stats bar */}
             {trades.length > 0 && (
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
                     {[
-                        { label: 'Filtered Trades', val: trades.length, color: '#fff' },
+                        { label: 'Trades', val: trades.length, color: '#fff' },
                         { label: 'Win Rate', val: `${winrate.toFixed(1)}%`, color: winrate >= 50 ? '#10b981' : '#ef4444' },
-                        { label: 'Net P&L', val: `${totalPnL >= 0 ? '+' : ''}$${totalPnL.toFixed(2)}`, color: totalPnL >= 0 ? '#10b981' : '#ef4444' },
-                    ].map(({ label, val, color }) => (
-                        <div key={label} className="px-5 py-3 rounded-2xl flex items-center justify-between"
+                        { label: 'Net P&L', val: `${totalPnL >= 0 ? '+' : ''}$${totalPnL.toFixed(0)}`, color: totalPnL >= 0 ? '#10b981' : '#ef4444', full: true },
+                    ].map(({ label, val, color, full }) => (
+                        <div key={label} className={`px-4 py-2.5 md:px-5 md:py-3 rounded-2xl flex items-center justify-between ${full ? 'col-span-2 sm:col-span-1' : ''}`}
                             style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                            <span className="section-label">{label}</span>
-                            <span className="font-mono font-bold text-lg" style={{ color }}>{val}</span>
+                            <span className="text-[9px] md:section-label uppercase tracking-widest">{label}</span>
+                            <span className="font-mono font-bold text-sm md:text-lg" style={{ color }}>{val}</span>
                         </div>
                     ))}
                 </div>

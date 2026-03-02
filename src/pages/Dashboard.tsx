@@ -148,27 +148,27 @@ export function Dashboard() {
         <div className="space-y-6">
 
             {/* ── Hero Banner */}
-            <div className="relative rounded-2xl overflow-hidden p-7 flex items-center justify-between"
+            <div className="relative rounded-2xl overflow-hidden p-5 md:p-7 flex flex-col md:flex-row md:items-center justify-between gap-6"
                 style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(6,182,212,0.08) 50%, rgba(16,185,129,0.06) 100%)', border: '1px solid rgba(124,58,237,0.2)' }}>
                 <div className="absolute inset-0 candle-bg pointer-events-none opacity-40" />
                 <div className="absolute right-0 top-0 w-72 h-72 pointer-events-none" style={{ background: 'radial-gradient(circle at 80% 20%, rgba(124,58,237,0.12), transparent 60%)' }} />
 
                 <div className="relative z-10">
                     <p className="section-label mb-2">Welcome back</p>
-                    <h2 className="text-3xl font-bold text-white mb-1">
+                    <h2 className="text-2xl md:text-3xl font-bold text-white mb-1">
                         Ready to <span style={{ color: '#a78bfa' }}>trade?</span>
                     </h2>
-                    <p className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>Track, analyze, and improve your edge daily.</p>
+                    <p className="text-xs md:text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>Track, analyze, and improve your edge daily.</p>
                 </div>
 
-                <div className="relative z-10 flex items-center gap-6">
-                    <div className="hidden lg:flex flex-col items-end">
+                <div className="relative z-10 flex flex-row md:flex-row items-center justify-between md:justify-end gap-4 md:gap-6 w-full md:w-auto mt-2 md:mt-0">
+                    <div className="flex flex-col items-start md:items-end">
                         <span className="section-label mb-1">Net P&L</span>
-                        <span className={`text-3xl font-mono font-black ${isProfit ? 'profit-glow' : 'loss-glow'}`}>
+                        <span className={`text-2xl md:text-3xl font-mono font-black ${isProfit ? 'profit-glow' : 'loss-glow'}`}>
                             {isProfit ? '+' : ''}${totalPnL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                     </div>
-                    <Link to="/app/trades/new" className="btn-primary px-6 py-3 text-sm">
+                    <Link to="/app/trades/new" className="btn-primary px-4 py-2.5 md:px-6 md:py-3 text-xs md:text-sm whitespace-nowrap">
                         + Log Trade
                     </Link>
                 </div>

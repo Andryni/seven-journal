@@ -97,13 +97,14 @@ export function Calendar() {
         return (
             <button
                 onClick={() => setSelected(date)}
-                className="relative flex flex-col justify-between p-3 rounded-2xl text-left transition-all duration-200 w-full group overflow-hidden"
+                className="relative flex flex-col justify-between p-2 md:p-3 rounded-xl md:rounded-2xl text-left transition-all duration-200 w-full group overflow-hidden"
                 style={{
                     background: bgColor,
                     border: `1px solid ${borderColor}`,
-                    minHeight: '88px',
+                    minHeight: window.innerWidth < 768 ? '60px' : '88px',
                     boxShadow: isSel ? '0 0 0 2px rgba(124,58,237,0.4), 0 4px 20px rgba(124,58,237,0.15)' : undefined,
                     transform: isSel ? 'scale(1.03)' : undefined,
+                    zIndex: isSel ? 10 : 1,
                 }}
             >
                 {/* Profit/loss intensity tint */}
@@ -153,7 +154,7 @@ export function Calendar() {
     }
 
     return (
-        <div className="flex gap-6 h-[calc(100vh-7rem)] animate-fade-scale">
+        <div className="flex flex-col lg:flex-row gap-6 animate-fade-scale">
 
             {/* ── Main Calendar Column ──────────────────────── */}
             <div className="flex-1 flex flex-col min-w-0">
@@ -162,16 +163,16 @@ export function Calendar() {
                 <div className="flex items-center justify-between mb-6 flex-shrink-0">
                     <div>
                         <p className="section-label mb-1">Timeline</p>
-                        <h2 className="text-2xl font-bold flex items-center gap-2">
+                        <h2 className="text-xl md:text-2xl font-bold flex items-center gap-2">
                             <CalendarDays size={20} className="text-violet-400" />
-                            Trading Calendar
+                            <span className="truncate">Trading Calendar</span>
                         </h2>
                     </div>
 
                     {/* Month nav */}
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 md:gap-3 flex-wrap justify-end">
                         {/* Legend */}
-                        <div className="hidden md:flex items-center gap-4 mr-4 text-xs font-bold">
+                        <div className="hidden lg:flex items-center gap-4 mr-4 text-xs font-bold">
                             {[
                                 { color: '#10b981', bg: 'rgba(16,185,129,0.15)', label: 'Profit' },
                                 { color: '#ef4444', bg: 'rgba(239,68,68,0.15)', label: 'Loss' },
@@ -183,23 +184,23 @@ export function Calendar() {
                             ))}
                         </div>
 
-                        <div className="flex items-center gap-2 px-4 py-2 rounded-2xl"
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-xl h-10"
                             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
                             <button onClick={() => setViewDate(d => subMonths(d, 1))}
-                                className="p-1.5 rounded-xl hover:bg-white/10 transition-colors text-white/50 hover:text-white">
-                                <ChevronLeft size={16} />
+                                className="p-1 rounded-lg hover:bg-white/10 transition-colors text-white/50 hover:text-white">
+                                <ChevronLeft size={14} />
                             </button>
-                            <span className="text-sm font-bold text-white w-32 text-center">
+                            <span className="text-[11px] md:text-sm font-bold text-white w-24 md:w-32 text-center truncate">
                                 {format(viewDate, 'MMMM yyyy')}
                             </span>
                             <button onClick={() => setViewDate(d => addMonths(d, 1))}
-                                className="p-1.5 rounded-xl hover:bg-white/10 transition-colors text-white/50 hover:text-white">
-                                <ChevronRight size={16} />
+                                className="p-1 rounded-lg hover:bg-white/10 transition-colors text-white/50 hover:text-white">
+                                <ChevronRight size={14} />
                             </button>
                         </div>
 
                         <button onClick={() => { setViewDate(new Date()); setSelected(new Date()); }}
-                            className="px-3 py-2 rounded-xl text-xs font-bold transition-colors"
+                            className="h-10 px-3 md:px-4 py-2 rounded-xl text-[11px] md:text-xs font-bold transition-colors"
                             style={{ background: 'rgba(124,58,237,0.15)', color: '#a78bfa', border: '1px solid rgba(124,58,237,0.25)' }}>
                             Today
                         </button>
@@ -232,7 +233,7 @@ export function Calendar() {
             </div>
 
             {/* ── Right Sidebar ────────────────────────────── */}
-            <div className="w-72 flex-shrink-0 flex flex-col gap-4 overflow-y-auto">
+            <div className="w-full lg:w-72 flex-shrink-0 flex flex-col gap-4">
 
                 {/* Monthly stats */}
                 <div className="glass-card p-5">
