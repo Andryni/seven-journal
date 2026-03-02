@@ -105,18 +105,26 @@ export function LandingPage() {
     const registerUser = useAuthStore(state => state.register);
     const heroRef = useRef<HTMLDivElement>(null);
 
+    const loginUser = useAuthStore(state => state.login);
+
     const handleDemo = async () => {
-        // 1. Register/Login demo user
-        await registerUser('DemoTrader', 'demo@example.com', 'demo123456');
+        // 1. Try to login first (account might already exist)
+        let { error } = await loginUser('demo@example.com', 'demo123456');
+
+        // 2. If login fails, register the demo user (first time)
+        if (error) {
+            await registerUser('DemoTrader', 'demo@example.com', 'demo123456');
+        }
+
         const user = useAuthStore.getState().currentUser;
 
         if (user) {
-            // 2. Check if demo account exists, if not create it
+            // 3. Check if demo account exists, if not create it
             let accounts = useAuthStore.getState().accounts;
             let demoAcc = accounts.find(a => a.name === 'Demo Account' || a.id === 'demo-account');
 
             if (!demoAcc) {
-                const { error } = await useAuthStore.getState().addAccount({
+                const { error: accError } = await useAuthStore.getState().addAccount({
                     userId: user.id,
                     name: 'Demo Account',
                     initialCapital: 100000,
@@ -125,7 +133,7 @@ export function LandingPage() {
                     type: 'Demo',
                     broker: 'Seven Broker'
                 });
-                if (!error) {
+                if (!accError) {
                     accounts = useAuthStore.getState().accounts;
                     demoAcc = accounts.find(a => a.name === 'Demo Account');
                 }
@@ -133,13 +141,18 @@ export function LandingPage() {
 
             if (demoAcc) {
                 await useAuthStore.getState().setActiveAccount(demoAcc.id);
-                // 3. Load demo trades linked to this account
+                // 4. Load demo trades linked to this account
                 const demoTrades = getDemoTrades().map(t => ({ ...t, accountId: demoAcc!.id }));
                 loadDemoData(demoTrades);
             }
-        }
 
-        navigate('/app/dashboard');
+            // Navigate only if we are sure we have a user
+            navigate('/app/dashboard');
+        } else {
+            // Log for debugging
+            console.error('Demo auth failed');
+            navigate('/signin');
+        }
     };
 
     const features = FEATURES(t);
