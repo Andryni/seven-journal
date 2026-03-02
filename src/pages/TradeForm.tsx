@@ -11,6 +11,7 @@ import {
     ArrowLeft, Save, BookOpen as _BookOpen, Shield,
     Target, Brain, Camera, Tag, FileText, ChevronDown, Zap, DollarSign, Percent
 } from 'lucide-react';
+import { useTranslation } from '../hooks/useTranslation';
 
 /* ── Small reusable components ─────────────────────────────── */
 function SectionHeader({ icon: Icon, label, color = '#a78bfa' }: { icon: React.ElementType; label: string; color?: string }) {
@@ -147,14 +148,14 @@ function EmotionSelector({ label, value, onChange, options, color = '#a78bfa' }:
 }
 
 /* ── Grade selector ─────────────────────────────────────────── */
-function GradeSelector({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function GradeSelector({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
     const grades = [
         { val: 'A+', color: '#10b981' }, { val: 'A', color: '#34d399' }, { val: 'B', color: '#a78bfa' },
         { val: 'C', color: '#f59e0b' }, { val: 'F', color: '#ef4444' },
     ];
     return (
         <div>
-            <Label>Trade Grade</Label>
+            <Label>{label}</Label>
             <div className="flex gap-2">
                 {grades.map(({ val, color }) => (
                     <button key={val} type="button" onClick={() => onChange(value === val ? '' : val)}
@@ -174,6 +175,7 @@ function GradeSelector({ value, onChange }: { value: string; onChange: (v: strin
    MAIN FORM
 ══════════════════════════════════════════════════════════════ */
 export function TradeForm() {
+    const { t } = useTranslation();
     const { id } = useParams();
     const navigate = useNavigate();
     const isEditing = !!id;
@@ -310,9 +312,9 @@ export function TradeForm() {
                         <ArrowLeft size={16} />
                     </button>
                     <div>
-                        <p className="section-label mb-0.5">Journal</p>
+                        <p className="section-label mb-0.5">{t.common.journal}</p>
                         <h2 className="text-2xl font-bold text-white">
-                            {isEditing ? 'Edit Trade' : 'Log New Trade'}
+                            {isEditing ? t.tradeForm.editTrade : t.tradeForm.logTrade}
                         </h2>
                     </div>
                 </div>
@@ -331,12 +333,12 @@ export function TradeForm() {
 
                 {/* ══ SECTION 1: Trade Setup ══════════════════ */}
                 <div className="glass-card p-6">
-                    <SectionHeader icon={Zap} label="Trade Setup" color="#06b6d4" />
+                    <SectionHeader icon={Zap} label={t.tradeForm.logTrade.split(' ')[1] || 'Setup'} color="#06b6d4" />
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {/* Pair */}
                         <div>
-                            <Label>Pair / Symbol</Label>
+                            <Label>{t.tradeForm.pair}</Label>
                             <div className="relative">
                                 <input {...register('pair')}
                                     className="w-full px-3 py-2.5 rounded-xl text-sm font-bold text-white uppercase outline-none transition-all focus:border-violet-500/50"
@@ -353,17 +355,17 @@ export function TradeForm() {
                         />
 
                         {/* Result */}
-                        <StyledSelect label="Result / Status" {...register('result')}>
+                        <StyledSelect label={t.tradeForm.result} {...register('result')}>
                             <option value="Running">🔵 Running</option>
                             <option value="TP">✅ TP — Take Profit</option>
                             <option value="SL">❌ SL — Stop Loss</option>
                             <option value="BE">⚖️ BE — Break Even</option>
-                            <option value="Partial">🔶 Partial</option>
-                            <option value="Manual Close">🔧 Manual Close</option>
+                            <option value="Partial">🔶 {t.debrief.partial}</option>
+                            <option value="Manual Close">🔧 Manual</option>
                         </StyledSelect>
 
                         {/* Session */}
-                        <StyledSelect label="Session" {...register('session')}>
+                        <StyledSelect label={t.tradeForm.session} {...register('session')}>
                             <option value="Asia">🌏 Asia</option>
                             <option value="London">🇬🇧 London</option>
                             <option value="New York">🇺🇸 New York</option>
@@ -373,7 +375,7 @@ export function TradeForm() {
 
                         {/* Strategy */}
                         <div className="sm:col-span-2">
-                            <Label>Strategy / Setup</Label>
+                            <Label>{t.tradeForm.strategy}</Label>
                             <input {...register('strategy')}
                                 className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none transition-all focus:border-violet-500/50"
                                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
@@ -386,12 +388,12 @@ export function TradeForm() {
 
                 {/* ══ SECTION 2: Risk & Reward ════════════════ */}
                 <div className="glass-card p-6">
-                    <SectionHeader icon={Shield} label="Risk & Reward" color="#10b981" />
+                    <SectionHeader icon={Shield} label={t.tradeForm.risk + ' & ' + t.tradeForm.gain} color="#10b981" />
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         {/* Risk */}
                         <AmountInput
-                            label="Risk (Loss)"
+                            label={t.tradeForm.risk}
                             mode={riskMode}
                             onModeChange={setRiskMode}
                             register={register}
@@ -403,7 +405,7 @@ export function TradeForm() {
 
                         {/* Gain */}
                         <AmountInput
-                            label="Gain (Target)"
+                            label={t.tradeForm.gain}
                             mode={gainMode}
                             onModeChange={setGainMode}
                             register={register}
@@ -415,7 +417,7 @@ export function TradeForm() {
 
                         {/* Planned R:R — auto-calculated */}
                         <div>
-                            <Label>Planned R:R (auto)</Label>
+                            <Label>Planned R:R</Label>
                             <div className="relative">
                                 <input type="number" step="0.01"
                                     {...register('plannedRR', { valueAsNumber: true })}
@@ -433,7 +435,7 @@ export function TradeForm() {
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t"
                             style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                             <div>
-                                <Label>Net P&L ($)</Label>
+                                <Label>{t.tradeForm.netPnl}</Label>
                                 <div className="relative">
                                     <input type="number" step="0.01"
                                         {...register('netPnl', { valueAsNumber: true })}
@@ -449,7 +451,7 @@ export function TradeForm() {
                                 </div>
                             </div>
                             <div>
-                                <Label>Commission ($)</Label>
+                                <Label>{t.tradeForm.commission}</Label>
                                 <input type="number" step="0.01"
                                     {...register('commission', { valueAsNumber: true })}
                                     placeholder="0.00"
@@ -458,7 +460,7 @@ export function TradeForm() {
                                 />
                             </div>
                             <div>
-                                <Label>Actual R:R</Label>
+                                <Label>{t.tradeForm.actualRR}</Label>
                                 <input type="number" step="0.01"
                                     {...register('actualRR', { valueAsNumber: true })}
                                     placeholder="0.00"
@@ -472,34 +474,35 @@ export function TradeForm() {
 
                 {/* ══ SECTION 3: Confluence & Evidence ════════ */}
                 <div className="glass-card p-6">
-                    <SectionHeader icon={Target} label="Confluence & Evidence" color="#f59e0b" />
+                    <SectionHeader icon={Target} label={t.tradeForm.confluenceAndEvidence} color="#f59e0b" />
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {/* Confluences */}
                         <div>
-                            <Label>Confluences</Label>
+                            <Label>{t.tradeForm.confluences}</Label>
                             <input type="text"
                                 className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none transition-all focus:border-violet-500/50"
                                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-                                placeholder="FVG, Order Block, HTF Bias, Trendline…"
+                                placeholder={t.tradeForm.confluencesPlaceholder}
                                 onChange={e => setValue('confluence', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
                             />
                         </div>
 
                         <div>
-                            <Label>Tags</Label>
+                            <Label>{t.tradeForm.tags}</Label>
                             <div className="relative">
                                 <Tag size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.25)' }} />
                                 <input type="text"
                                     className="w-full pl-8 pr-3 py-2.5 rounded-xl text-sm text-white outline-none transition-all focus:border-violet-500/50"
                                     style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-                                    placeholder="A-Setup, News, Scalp…"
+                                    placeholder={t.tradeForm.tagsPlaceholder}
                                     onChange={e => setValue('tags', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <Label>Setup Screenshot (Before)</Label>
+                            <Label>{t.tradeForm.setupScreenshot} ({t.common.before})</Label>
                             <div className="relative">
                                 <Camera size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.25)' }} />
                                 <input type="url" {...register('setupBeforeUrl')}
@@ -510,7 +513,7 @@ export function TradeForm() {
                         </div>
 
                         <div>
-                            <Label>Result Screenshot (After)</Label>
+                            <Label>{t.tradeForm.setupScreenshot} ({t.common.after})</Label>
                             <div className="relative">
                                 <Camera size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.25)' }} />
                                 <input type="url" {...register('setupAfterUrl')}
@@ -524,11 +527,11 @@ export function TradeForm() {
 
                 {/* ══ SECTION 4: Psychology ════════════════════ */}
                 <div className="glass-card p-6">
-                    <SectionHeader icon={Brain} label="Psychology" color="#a78bfa" />
+                    <SectionHeader icon={Brain} label={t.tradeForm.psychology} color="#a78bfa" />
 
                     <div className="space-y-5">
                         <EmotionSelector
-                            label="Emotion Before Entry"
+                            label={t.tradeForm.emotionBefore}
                             value={emotBefore}
                             onChange={v => setValue('emotionBefore', (v || null) as Trade['emotionBefore'])}
                             color="#06b6d4"
@@ -543,7 +546,7 @@ export function TradeForm() {
                         />
 
                         <EmotionSelector
-                            label="Emotion After Trade"
+                            label={t.tradeForm.emotionAfter}
                             value={emotAfter}
                             onChange={v => setValue('emotionAfter', (v || null) as Trade['emotionAfter'])}
                             color="#10b981"
@@ -557,6 +560,7 @@ export function TradeForm() {
                         />
 
                         <GradeSelector
+                            label={t.tradeForm.tradeGrade}
                             value={grade}
                             onChange={v => setValue('tradeGrade', (v || null) as Trade['tradeGrade'])}
                         />
@@ -565,13 +569,13 @@ export function TradeForm() {
 
                 {/* ══ SECTION 5: Notes ═════════════════════════ */}
                 <div className="glass-card p-6">
-                    <SectionHeader icon={FileText} label="Notes & Rationale" color="#f87171" />
+                    <SectionHeader icon={FileText} label={t.tradeForm.notesAndRationale} color="#f87171" />
                     <div>
-                        <Label>Trade Notes</Label>
+                        <Label>{t.tradeForm.tradeNotes}</Label>
                         <textarea {...register('notes')} rows={4}
                             className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none transition-all resize-none custom-scrollbar focus:border-violet-500/50"
                             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-                            placeholder="Describe your reasoning, what you saw, what you did and why…"
+                            placeholder={t.tradeForm.tradeNotesPlaceholder}
                         />
                     </div>
                 </div>
@@ -583,18 +587,18 @@ export function TradeForm() {
                         style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }}
                         onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
                         onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}>
-                        Cancel
+                        {t.common.cancel}
                     </button>
                     <button type="submit" disabled={isSaving} className="btn-primary px-8 py-2.5 gap-2">
                         {isSaving ? (
                             <span className="flex items-center gap-2">
                                 <span className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-                                Saving...
+                                {t.common.saving}
                             </span>
                         ) : (
                             <>
                                 <Save size={15} />
-                                {isEditing ? 'Update Trade' : 'Save Trade'}
+                                {isEditing ? t.common.update : t.common.save}
                             </>
                         )}
                     </button>

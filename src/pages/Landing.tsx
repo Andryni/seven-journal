@@ -7,6 +7,7 @@ import {
     ArrowRight, TrendingUp, Shield, Zap, Target
 } from 'lucide-react';
 import { useRef } from 'react';
+import { useTranslation } from '../hooks/useTranslation';
 
 /* ── Mini candlestick SVG chart ─────────────────────────────── */
 function SVGChart() {
@@ -80,35 +81,38 @@ function TickerBanner() {
 }
 
 /* ── Feature card ───────────────────────────────────────────── */
-const FEATURES = [
-    { Icon: LayoutDashboard, color: '#7c3aed', title: 'Smart Dashboard', desc: 'Real-time PnL tracking, equity curve, and performance KPIs at one glance.' },
-    { Icon: Activity, color: '#06b6d4', title: 'Trade Journal', desc: 'Log every trade detail — entry, exit, strategy, confluences & screenshots.' },
-    { Icon: Calendar, color: '#10b981', title: 'Performance Calendar', desc: 'Visual heatmap of your trading days. Spot patterns and streaks instantly.' },
-    { Icon: BarChart2, color: '#f59e0b', title: 'Deep Analytics', desc: 'Breakdown by session, pair, strategy and timeframe to find your edge.' },
-    { Icon: Brain, color: '#a78bfa', title: 'Psychology Tracker', desc: 'Daily debriefs and emotional state logging to conquer your mindset.' },
-    { Icon: Shield, color: '#34d399', title: 'Risk Management', desc: 'R:R calculator, drawdown limits, and consistency score per account.' },
+const FEATURES = (t: any) => [
+    { Icon: LayoutDashboard, color: '#7c3aed', title: t.landing.dashboardTitle, desc: t.landing.dashboardDesc },
+    { Icon: Activity, color: '#06b6d4', title: t.landing.journalTitle, desc: t.landing.journalDesc },
+    { Icon: Calendar, color: '#10b981', title: t.landing.calendarTitle, desc: t.landing.calendarDesc },
+    { Icon: BarChart2, color: '#f59e0b', title: t.landing.analyticsTitle, desc: t.landing.analyticsDesc },
+    { Icon: Brain, color: '#a78bfa', title: t.landing.psychologyTitle, desc: t.landing.psychologyDesc },
+    { Icon: Shield, color: '#34d399', title: t.landing.riskTitle, desc: t.landing.riskDesc },
 ];
 
-/* ── Stat card ──────────────────────────────────────────────── */
-const STATS = [
-    { val: '+$28,400', label: 'Demo PnL Tracked', color: '#10b981' },
-    { val: '68.5%', label: 'Avg Win Rate', color: '#7c3aed' },
-    { val: '3.2 R:R', label: 'Risk / Reward', color: '#06b6d4' },
-    { val: '∞', label: '100% Private', color: '#f59e0b' },
+const STATS = (t: any) => [
+    { val: '+$28,400', label: t.landing.demoPnL, color: '#10b981' },
+    { val: '68.5%', label: t.landing.avgWinRate, color: '#7c3aed' },
+    { val: '3.2 R:R', label: t.landing.rrRatio, color: '#06b6d4' },
+    { val: '∞', label: t.landing.private, color: '#f59e0b' },
 ];
 
 export function LandingPage() {
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const loadDemoData = useTradeStore(state => state.loadDemoData);
-    const register = useAuthStore(state => state.register);
+    const registerUser = useAuthStore(state => state.register);
     const heroRef = useRef<HTMLDivElement>(null);
 
     const handleDemo = () => {
-        register('DemoTrader', 'demo@example.com', 'demo123456');
+        registerUser('DemoTrader', 'demo@example.com', 'demo123456');
         useAuthStore.getState().updateUser({ activeAccountId: 'demo-account' });
         loadDemoData(getDemoTrades());
         navigate('/app/dashboard');
     };
+
+    const stats = STATS(t);
+    const features = FEATURES(t);
 
     return (
         <div className="min-h-screen text-white overflow-x-hidden" style={{ background: '#06060a', fontFamily: "'Space Grotesk', sans-serif" }}>
@@ -135,20 +139,20 @@ export function LandingPage() {
                 </div>
 
                 <div className="hidden md:flex items-center gap-8 text-sm font-medium text-white/50">
-                    <a href="#features" className="hover:text-white transition-colors">Features</a>
-                    <a href="#how" className="hover:text-white transition-colors">How it works</a>
-                    <a href="#stats" className="hover:text-white transition-colors">Stats</a>
+                    <a href="#features" className="hover:text-white transition-colors">{t.landing.features}</a>
+                    <a href="#how" className="hover:text-white transition-colors">{t.landing.howItWorks}</a>
+                    <a href="#stats" className="hover:text-white transition-colors">{t.landing.stats}</a>
                 </div>
 
                 <div className="flex items-center gap-3">
                     <Link to="/signin"
                         className="px-4 py-2 text-sm font-semibold text-white/60 hover:text-white transition-colors rounded-xl hover:bg-white/5">
-                        Sign in
+                        {t.landing.signIn}
                     </Link>
                     <Link to="/signup"
                         style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', boxShadow: '0 4px 20px rgba(124,58,237,0.4)' }}
                         className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white transition-all hover:shadow-lg hover:-translate-y-0.5">
-                        Get Started <ArrowRight size={14} />
+                        {t.common.getStarted} <ArrowRight size={14} />
                     </Link>
                 </div>
             </nav>
@@ -159,21 +163,21 @@ export function LandingPage() {
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold mb-8 animate-slide-up"
                     style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.3)', color: '#a78bfa' }}>
                     <span className="w-1.5 h-1.5 rounded-full bg-profit animate-blink" />
-                    The #1 Trading Journal for Serious Traders
+                    {t.landing.badge}
                 </div>
 
                 {/* H1 */}
                 <h1 className="text-5xl md:text-7xl lg:text-8xl font-black leading-none tracking-tight mb-6 animate-slide-up stagger-1"
                     style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
-                    <span className="text-white">Master Your</span><br />
+                    <span className="text-white">{t.landing.heroTitle}</span><br />
                     <span className="text-transparent bg-clip-text"
                         style={{ backgroundImage: 'linear-gradient(135deg, #7c3aed 0%, #a78bfa 40%, #06b6d4 100%)' }}>
-                        Trading Edge.
+                        {t.landing.heroTitleAccent}
                     </span>
                 </h1>
 
                 <p className="text-lg md:text-xl text-white/50 max-w-xl leading-relaxed mb-10 animate-slide-up stagger-2" style={{ fontWeight: 400 }}>
-                    Stop guessing. Start winning. Journal, analyze, and refine your strategy with the most powerful trading journal ever built.
+                    {t.landing.heroDesc}
                 </p>
 
                 {/* CTAs */}
@@ -181,7 +185,7 @@ export function LandingPage() {
                     <Link to="/signup"
                         className="relative overflow-hidden group flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-bold text-base text-white transition-all"
                         style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', boxShadow: '0 8px 40px rgba(124,58,237,0.5)' }}>
-                        <span className="relative z-10">Start for Free</span>
+                        <span className="relative z-10">{t.landing.startForFree}</span>
                         <ArrowRight size={16} className="relative z-10 group-hover:translate-x-1 transition-transform" />
                         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
                             style={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)' }} />
@@ -192,7 +196,7 @@ export function LandingPage() {
                         onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(124,58,237,0.4)')}
                         onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}>
                         <Zap size={16} className="text-yellow-400" />
-                        Try with Demo Data
+                        {t.landing.tryDemo}
                     </button>
                 </div>
 
@@ -283,19 +287,19 @@ export function LandingPage() {
                     <div className="text-center mb-16">
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold mb-4"
                             style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', color: '#67e8f9' }}>
-                            HOW IT WORKS
+                            {t.landing.howItWorksBadge}
                         </div>
                         <h2 className="text-4xl md:text-5xl font-black mb-4">
-                            Simple. <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, #a78bfa, #06b6d4)' }}>Powerful.</span>
+                            {t.landing.simple} <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, #a78bfa, #06b6d4)' }}>{t.landing.powerful}</span>
                         </h2>
-                        <p className="text-white/40 max-w-md mx-auto">Three steps to transform your trading performance forever.</p>
+                        <p className="text-white/40 max-w-md mx-auto">{t.landing.threeSteps}</p>
                     </div>
 
                     <div className="grid md:grid-cols-3 gap-6">
                         {[
-                            { n: '01', Icon: Activity, color: '#7c3aed', title: 'Log Every Trade', desc: 'Record your entry, exit, strategy, and screenshots in under 30 seconds.' },
-                            { n: '02', Icon: BarChart2, color: '#06b6d4', title: 'Analyze Deeply', desc: 'Let AI-powered analytics reveal your true edge, strengths and weaknesses.' },
-                            { n: '03', Icon: TrendingUp, color: '#10b981', title: 'Scale Your Edge', desc: 'Refine your playbook and watch your performance transform month over month.' },
+                            { n: '01', Icon: Activity, color: '#7c3aed', title: t.landing.logStepTitle, desc: t.landing.logStepDesc },
+                            { n: '02', Icon: BarChart2, color: '#06b6d4', title: t.landing.analyzeStepTitle, desc: t.landing.analyzeStepDesc },
+                            { n: '03', Icon: TrendingUp, color: '#10b981', title: t.landing.scaleStepTitle, desc: t.landing.scaleStepDesc },
                         ].map(({ n, Icon, color, title, desc }) => (
                             <div key={n} className="relative p-8 rounded-3xl group transition-all duration-300 cursor-default"
                                 style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
@@ -320,17 +324,17 @@ export function LandingPage() {
                     <div className="text-center mb-16">
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold mb-4"
                             style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.25)', color: '#a78bfa' }}>
-                            FEATURES
+                            {t.landing.featuresBadge}
                         </div>
                         <h2 className="text-4xl md:text-5xl font-black mb-4">
-                            Everything you need to<br />
-                            <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, #7c3aed, #06b6d4)' }}>become profitable.</span>
+                            {t.landing.profitableTitle}<br />
+                            <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, #7c3aed, #06b6d4)' }}>{t.landing.profitableAccent}</span>
                         </h2>
-                        <p className="text-white/40 max-w-md mx-auto">No more spreadsheets. Get a professional-grade trading command center.</p>
+                        <p className="text-white/40 max-w-md mx-auto">{t.landing.noSpreadsheets}</p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {FEATURES.map(({ Icon, color, title, desc }, i) => (
+                        {features.map(({ Icon, color, title, desc }, i) => (
                             <div key={title}
                                 className="p-7 rounded-3xl group transition-all duration-300"
                                 style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', animationDelay: `${i * 0.08}s` }}

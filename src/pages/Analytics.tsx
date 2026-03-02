@@ -11,6 +11,7 @@ import {
     ArrowUpRight, ArrowDownRight, BarChart3, Award, Flame, Calendar as CalIcon, ChevronDown
 } from 'lucide-react';
 import type { Trade } from '../lib/schemas';
+import { useTranslation } from '../hooks/useTranslation';
 
 type Period = 'daily' | 'weekly' | 'monthly' | 'all' | 'custom';
 
@@ -33,6 +34,8 @@ function PeriodFilter({ active, onSelect, customFrom, customTo, onCustomChange }
     const [showCustom, setShowCustom] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
+    const { t } = useTranslation();
+
     useEffect(() => {
         function close(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setShowCustom(false); }
         document.addEventListener('mousedown', close);
@@ -40,10 +43,10 @@ function PeriodFilter({ active, onSelect, customFrom, customTo, onCustomChange }
     }, []);
 
     const PERIODS: { key: Period; label: string }[] = [
-        { key: 'daily', label: 'Day' },
-        { key: 'weekly', label: 'Week' },
-        { key: 'monthly', label: 'Month' },
-        { key: 'all', label: 'All Time' },
+        { key: 'daily', label: t.dashboard.day },
+        { key: 'weekly', label: t.dashboard.week },
+        { key: 'monthly', label: t.dashboard.month },
+        { key: 'all', label: t.dashboard.allTime },
     ];
 
     return (
@@ -69,7 +72,7 @@ function PeriodFilter({ active, onSelect, customFrom, customTo, onCustomChange }
                     <CalIcon size={12} />
                     {active === 'custom' && customFrom && customTo
                         ? `${format(new Date(customFrom), 'MMM d')} → ${format(new Date(customTo), 'MMM d')}`
-                        : 'Custom'}
+                        : t.dashboard.period}
                     <ChevronDown size={12} className={showCustom ? 'rotate-180' : ''} style={{ transition: 'transform 0.2s' }} />
                 </button>
                 {showCustom && (
@@ -88,7 +91,7 @@ function PeriodFilter({ active, onSelect, customFrom, customTo, onCustomChange }
                                     style={{ colorScheme: 'dark', background: 'rgba(255,255,255,0.05)' }} />
                             </label>
                         ))}
-                        <button onClick={() => setShowCustom(false)} className="w-full btn-primary py-2 text-xs mt-1">Apply</button>
+                        <button onClick={() => setShowCustom(false)} className="w-full btn-primary py-2 text-xs mt-1">{t.common.save}</button>
                     </div>
                 )}
             </div>
@@ -97,6 +100,7 @@ function PeriodFilter({ active, onSelect, customFrom, customTo, onCustomChange }
 }
 
 export function Analytics() {
+    const { t } = useTranslation();
     const activeAccountId = useAuthStore(state => state.currentUser?.activeAccountId);
     const allTrades = useTradeStore((state) => state.trades);
 
@@ -186,8 +190,8 @@ export function Analytics() {
                 <div className="w-20 h-20 rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-6 animate-float">
                     <Zap size={36} className="text-primary-light" />
                 </div>
-                <h3 className="text-2xl font-bold mb-2">No Analytics Yet</h3>
-                <p className="text-text-secondary max-w-xs">Log some closed trades to unlock deep analytics and discover your trading edge.</p>
+                <h3 className="text-2xl font-bold mb-2">{t.dashboard.noTrades}</h3>
+                <p className="text-text-secondary max-w-xs">{t.dashboard.sessionReady}</p>
             </div>
         );
     }
@@ -200,10 +204,10 @@ export function Analytics() {
             {/* ── Header ──────────────────────────────────────── */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <p className="section-label mb-1">Insights</p>
+                    <p className="section-label mb-1">{t.analytics.performance}</p>
                     <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                         <Activity size={20} className="text-primary-light" />
-                        Performance Analytics
+                        {t.analytics.tradingStats}
                     </h2>
                 </div>
                 <PeriodFilter
@@ -219,7 +223,7 @@ export function Analytics() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard title="Net P&L" value={`${isProfit ? '+' : ''}$${stats.totalPnL.toFixed(2)}`} icon={<TrendingUp size={16} />} color={isProfit ? 'profit' : 'loss'} />
                 <MetricCard title="Win Rate" value={`${stats.winrate.toFixed(1)}%`} icon={<Target size={16} />} color="primary" />
-                <MetricCard title="Profit Factor" value={stats.profitFactor === Infinity ? '∞' : stats.profitFactor.toFixed(2)} icon={<Flame size={16} />} color={stats.profitFactor >= 1.5 ? 'profit' : 'loss'} />
+                <MetricCard title={t.analytics.profitFactor} value={stats.profitFactor === Infinity ? '∞' : stats.profitFactor.toFixed(2)} icon={<Flame size={16} />} color={stats.profitFactor >= 1.5 ? 'profit' : 'loss'} />
                 <MetricCard title="Avg Win/Loss" value={`${stats.avgLoss > 0 ? (stats.avgWin / stats.avgLoss).toFixed(2) : stats.avgWin.toFixed(0)}R`} icon={<Award size={16} />} color="cyan" />
             </div>
 
@@ -232,7 +236,7 @@ export function Analytics() {
                         <div>
                             <p className="section-label mb-1">Growth</p>
                             <h3 className="text-lg font-bold flex items-center gap-2">
-                                <Zap size={18} className="text-primary-light" /> Equity Curve
+                                <Zap size={18} className="text-primary-light" /> {t.analytics.equityCurve}
                             </h3>
                         </div>
                         <div className={`px-3 py-1 rounded-full text-xs font-bold font-mono ${isProfit ? 'text-profit bg-profit/10 border border-profit/20' : 'text-loss bg-loss/10 border border-loss/20'}`}>
@@ -259,7 +263,7 @@ export function Analytics() {
                             </ResponsiveContainer>
                         ) : (
                             <div className="h-full flex flex-col items-center justify-center text-text-muted text-sm italic">
-                                No trades in this period.
+                                {t.common.noData}
                             </div>
                         )}
                     </div>
@@ -312,7 +316,7 @@ export function Analytics() {
                         <ArrowUpRight size={24} className="text-profit" />
                     </div>
                     <div>
-                        <p className="section-label mb-1">Avg Win</p>
+                        <p className="section-label mb-1">{t.analytics.avgWin}</p>
                         <p className="text-2xl font-black font-mono text-profit">+${stats.avgWin.toFixed(2)}</p>
                     </div>
                 </div>
@@ -321,7 +325,7 @@ export function Analytics() {
                         <ArrowDownRight size={24} className="text-loss" />
                     </div>
                     <div>
-                        <p className="section-label mb-1">Avg Loss</p>
+                        <p className="section-label mb-1">{t.analytics.avgLoss}</p>
                         <p className="text-2xl font-black font-mono text-loss">-${stats.avgLoss.toFixed(2)}</p>
                     </div>
                 </div>
@@ -337,7 +341,9 @@ export function Analytics() {
                     <div key={title} className="glass-card p-6">
                         <div className="flex items-center gap-2 mb-6">
                             <BarChart3 size={16} className="text-primary-light" />
-                            <h3 className="font-bold text-sm">{title}</h3>
+                            <h3 className="font-bold text-sm">
+                                {title === 'By Session' ? 'By Session' : title === 'By Asset' ? 'By Asset' : 'By Strategy'}
+                            </h3>
                         </div>
                         <div className="h-[200px]">
                             {data.length > 0 ? (
@@ -366,7 +372,7 @@ export function Analytics() {
                                 </ResponsiveContainer>
                             ) : (
                                 <div className="h-full flex items-center justify-center text-text-muted text-xs italic">
-                                    No data.
+                                    {t.common.noData}
                                 </div>
                             )}
                         </div>

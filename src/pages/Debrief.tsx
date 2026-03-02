@@ -10,8 +10,10 @@ import { useAuthStore } from '../store/useAuthStore';
 import { format, parseISO, isSameDay } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
 import { BookOpen, Star, Save, TrendingUp, TrendingDown, Activity, Check } from 'lucide-react';
+import { useTranslation } from '../hooks/useTranslation';
 
 export function Debrief() {
+    const { t } = useTranslation();
     const [searchParams, setSearchParams] = useSearchParams();
     const queryDate = searchParams.get('date') || format(new Date(), 'yyyy-MM-dd');
     const [selectedDateStr, setSelectedDateStr] = useState<string>(queryDate);
@@ -81,20 +83,20 @@ export function Debrief() {
             <aside className="w-full lg:w-72 flex-shrink-0 flex flex-col gap-4">
                 {/* Date Selector */}
                 <div className="glass-card p-4">
-                    <p className="section-label mb-3">Select Date</p>
+                    <p className="section-label mb-3">{t.debrief.selectDate}</p>
                     <input type="date" value={selectedDateStr}
                         onChange={e => { setSelectedDateStr(e.target.value); setSearchParams({ date: e.target.value }); }}
                         className={`${inputCls} mb-2`} />
-                    <button onClick={() => { const t = format(new Date(), 'yyyy-MM-dd'); setSelectedDateStr(t); setSearchParams({ date: t }); }}
+                    <button onClick={() => { const today = format(new Date(), 'yyyy-MM-dd'); setSelectedDateStr(today); setSearchParams({ date: today }); }}
                         className="btn-ghost w-full text-xs justify-center py-2">
-                        Jump to Today
+                        {t.calendar.jumpToToday}
                     </button>
                 </div>
 
                 {/* Debrief List */}
                 <div className="glass-card flex-1 overflow-hidden flex flex-col">
                     <div className="p-4 border-b border-white/[0.05]">
-                        <p className="section-label">Past Reviews</p>
+                        <p className="section-label">{t.debrief.pastReviews}</p>
                     </div>
                     <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
                         {debriefs.length === 0 && (
@@ -133,7 +135,7 @@ export function Debrief() {
                             style={{ background: 'radial-gradient(ellipse at 80% 50%, rgba(124,58,237,0.1), transparent 60%)' }} />
                         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
-                                <p className="section-label mb-1">Daily Review</p>
+                                <p className="section-label mb-1">{t.debrief.dailyReview}</p>
                                 <h2 className="text-lg md:text-xl font-bold flex items-center gap-2">
                                     <BookOpen size={18} className="text-primary-light" />
                                     <span className="truncate">{format(parseISO(selectedDateStr), 'EEEE, MMM dd, yyyy')}</span>
@@ -144,12 +146,12 @@ export function Debrief() {
                                 {isSaving ? (
                                     <span className="flex items-center gap-2">
                                         <span className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-                                        Saving...
+                                        {t.common.loading}
                                     </span>
                                 ) : saved ? (
                                     <><Check size={15} /> Saved!</>
                                 ) : (
-                                    <><Save size={15} /> {currentDebrief ? 'Update' : 'Save'} Review</>
+                                    <><Save size={15} /> {currentDebrief ? t.common.update : t.common.save} Review</>
                                 )}
                             </button>
                         </div>
@@ -176,7 +178,7 @@ export function Debrief() {
                     <div className="glass-card p-6">
                         <div className="flex items-center gap-2 mb-4">
                             <span className="section-number">1</span>
-                            <h3 className="font-bold">Market Analysis</h3>
+                            <h3 className="font-bold">{t.debrief.marketAnalysis}</h3>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-4">
                             {(['Bullish', 'Neutral', 'Bearish', 'No Bias'] as const).map(b => (
@@ -195,11 +197,11 @@ export function Debrief() {
                         </div>
                         <div className="grid md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs text-text-secondary mb-2 font-semibold">Narrative Context</label>
+                                <label className="block text-xs text-text-secondary mb-2 font-semibold">{t.debrief.narrative}</label>
                                 <textarea {...form.register('narrative')} className={`${inputCls} resize-none`} rows={3} placeholder="Describe your session expectations..." />
                             </div>
                             <div>
-                                <label className="block text-xs text-text-secondary mb-2 font-semibold">Key Levels</label>
+                                <label className="block text-xs text-text-secondary mb-2 font-semibold">{t.debrief.keyLevels}</label>
                                 <textarea {...form.register('keyLevels')} className={`${inputCls} resize-none`} rows={3} placeholder="Support & resistance levels watched..." />
                             </div>
                         </div>
@@ -209,29 +211,33 @@ export function Debrief() {
                     <div className="glass-card p-6">
                         <div className="flex items-center gap-2 mb-4">
                             <span className="section-number">2</span>
-                            <h3 className="font-bold">Execution & Review</h3>
+                            <h3 className="font-bold">{t.debrief.executionReview}</h3>
                         </div>
                         <div className="mb-4">
-                            <label className="block text-xs text-text-secondary mb-2 font-semibold">Did the market respect your plan?</label>
+                            <label className="block text-xs text-text-secondary mb-2 font-semibold">{t.debrief.marketRespected}</label>
                             <div className="flex gap-3">
-                                {(['Yes', 'Partial', 'No'] as const).map(v => (
-                                    <label key={v} className="flex-1 text-center py-2.5 rounded-xl cursor-pointer font-bold text-sm transition-all border"
+                                {[
+                                    { k: 'Yes' as const, l: t.debrief.yes },
+                                    { k: 'Partial' as const, l: t.debrief.partial },
+                                    { k: 'No' as const, l: t.debrief.no }
+                                ].map(({ k, l }) => (
+                                    <label key={k} className="flex-1 text-center py-2.5 rounded-xl cursor-pointer font-bold text-sm transition-all border"
                                         style={{
-                                            background: form.watch('marketRespectedPlan') === v ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.02)',
-                                            borderColor: form.watch('marketRespectedPlan') === v ? 'rgba(124,58,237,0.4)' : 'rgba(255,255,255,0.06)',
-                                            color: form.watch('marketRespectedPlan') === v ? '#a78bfa' : '#71717a',
+                                            background: form.watch('marketRespectedPlan') === k ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.02)',
+                                            borderColor: form.watch('marketRespectedPlan') === k ? 'rgba(124,58,237,0.4)' : 'rgba(255,255,255,0.06)',
+                                            color: form.watch('marketRespectedPlan') === k ? '#a78bfa' : '#71717a',
                                         }}>
-                                        <input type="radio" value={v} {...form.register('marketRespectedPlan')} className="sr-only" />
-                                        {v}
+                                        <input type="radio" value={k} {...form.register('marketRespectedPlan')} className="sr-only" />
+                                        {l}
                                     </label>
                                 ))}
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {[
-                                { label: 'Key Mistakes', field: 'mistakes', ph: 'What went wrong?' },
-                                { label: 'Good Actions', field: 'goodActions', ph: 'Discipline wins?' },
-                                { label: 'Lessons', field: 'lessonsLearned', ph: 'Key takeaways...' },
+                                { label: t.debrief.mistakes, field: 'mistakes', ph: 'What went wrong?' },
+                                { label: t.debrief.goodActions, field: 'goodActions', ph: 'Discipline wins?' },
+                                { label: t.debrief.lessons, field: 'lessonsLearned', ph: 'Key takeaways...' },
                             ].map(({ label, field, ph }) => (
                                 <div key={field}>
                                     <label className="block text-xs text-text-secondary mb-2 font-semibold">{label}</label>
@@ -245,17 +251,17 @@ export function Debrief() {
                     <div className="glass-card p-6">
                         <div className="flex items-center gap-2 mb-4">
                             <span className="section-number">3</span>
-                            <h3 className="font-bold">Psychological Assessment</h3>
+                            <h3 className="font-bold">{t.debrief.psychologicalAssessment}</h3>
                         </div>
                         <div className="grid md:grid-cols-2 gap-6">
                             <div>
-                                <label className="block text-xs text-text-secondary mb-2 font-semibold">Emotional State</label>
+                                <label className="block text-xs text-text-secondary mb-2 font-semibold">{t.debrief.emotionalState}</label>
                                 <select {...form.register('emotionalState')} className={inputCls}>
                                     {['Focused', 'Calm', 'Distracted', 'Stressed', 'Overconfident'].map(e => <option key={e} value={e}>{e}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs text-text-secondary mb-3 font-semibold">Day Rating</label>
+                                <label className="block text-xs text-text-secondary mb-3 font-semibold">{t.debrief.dayRating}</label>
                                 <div className="flex gap-2">
                                     {[1, 2, 3, 4, 5].map(rating => (
                                         <label key={rating} className="cursor-pointer group">

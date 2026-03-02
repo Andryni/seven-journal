@@ -13,6 +13,7 @@ import {
     Trash2, Edit2, ExternalLink, ChevronUp, ChevronDown, Plus, BookOpen,
     ChevronLeft, ChevronRight, Filter, X, Search, SlidersHorizontal
 } from 'lucide-react';
+import { useTranslation } from '../hooks/useTranslation';
 
 const columnHelper = createColumnHelper<Trade>();
 
@@ -56,6 +57,7 @@ export function Trades() {
     const activeAccountId = useAuthStore(state => state.currentUser?.activeAccountId);
     const allTrades = useTradeStore(state => state.trades);
     const deleteTrade = useTradeStore(state => state.deleteTrade);
+    const { t } = useTranslation();
     const [sorting, setSorting] = useState<SortingState>([]);
     const [showFilters, setShowFilters] = useState(false);
     const filterRef = useRef<HTMLDivElement>(null);
@@ -89,20 +91,20 @@ export function Trades() {
     const strategies = useMemo(() => [...new Set(baseTrades.map(t => t.strategy).filter(Boolean))].sort(), [baseTrades]);
 
     const trades = useMemo(() => {
-        let t = baseTrades;
-        if (search) t = t.filter(x => x.pair.toLowerCase().includes(search.toLowerCase()) || x.notes?.toLowerCase().includes(search.toLowerCase()));
-        if (fPair) t = t.filter(x => x.pair === fPair);
-        if (fResult) t = t.filter(x => x.result === fResult);
-        if (fPos) t = t.filter(x => x.position === fPos);
-        if (fSession) t = t.filter(x => x.session === fSession);
-        if (fStrategy) t = t.filter(x => x.strategy === fStrategy);
-        if (fGrade) t = t.filter(x => x.tradeGrade === fGrade);
+        let tr = baseTrades;
+        if (search) tr = tr.filter(x => x.pair.toLowerCase().includes(search.toLowerCase()) || x.notes?.toLowerCase().includes(search.toLowerCase()));
+        if (fPair) tr = tr.filter(x => x.pair === fPair);
+        if (fResult) tr = tr.filter(x => x.result === fResult);
+        if (fPos) tr = tr.filter(x => x.position === fPos);
+        if (fSession) tr = tr.filter(x => x.session === fSession);
+        if (fStrategy) tr = tr.filter(x => x.strategy === fStrategy);
+        if (fGrade) tr = tr.filter(x => x.tradeGrade === fGrade);
         if (fDateFrom || fDateTo) {
             const from = fDateFrom ? startOfDay(new Date(fDateFrom)) : new Date(0);
             const to = fDateTo ? endOfDay(new Date(fDateTo)) : new Date(8640000000000000);
-            t = t.filter(x => isWithinInterval(parseISO(x.openedAt), { start: from, end: to }));
+            tr = tr.filter(x => isWithinInterval(parseISO(x.openedAt), { start: from, end: to }));
         }
-        return t;
+        return tr;
     }, [baseTrades, search, fPair, fResult, fPos, fSession, fStrategy, fGrade, fDateFrom, fDateTo]);
 
     /* active filter count */
@@ -113,14 +115,14 @@ export function Trades() {
         setFSession(''); setFStrategy(''); setFGrade(''); setFDateFrom(''); setFDateTo('');
     };
 
-    const totalPnL = useMemo(() => trades.reduce((a, t) => a + (t.netPnl || 0), 0), [trades]);
-    const totalWins = useMemo(() => trades.filter(t => (t.netPnl || 0) > 0).length, [trades]);
-    const winrate = trades.filter(t => t.result !== 'Running').length > 0
-        ? (totalWins / trades.filter(t => t.result !== 'Running').length) * 100 : 0;
+    const totalPnL = useMemo(() => trades.reduce((acc, tr) => acc + (tr.netPnl || 0), 0), [trades]);
+    const totalWins = useMemo(() => trades.filter(tr => (tr.netPnl || 0) > 0).length, [trades]);
+    const winrate = trades.filter(tr => tr.result !== 'Running').length > 0
+        ? (totalWins / trades.filter(tr => tr.result !== 'Running').length) * 100 : 0;
 
     const columns = [
         columnHelper.accessor('openedAt', {
-            header: 'Date',
+            header: t.common.calendar,
             cell: info => (
                 <span className="font-mono text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>
                     {format(new Date(info.getValue()), 'MMM dd, yyyy')}<br />
@@ -140,8 +142,8 @@ export function Trades() {
                 </div>
             )
         }),
-        columnHelper.accessor('position', { header: 'Side', cell: info => <PositionBadge pos={info.getValue()} /> }),
-        columnHelper.accessor('result', { header: 'Result', cell: info => <ResultBadge result={info.getValue()} /> }),
+        columnHelper.accessor('position', { header: t.trades.side, cell: info => <PositionBadge pos={info.getValue()} /> }),
+        columnHelper.accessor('result', { header: t.trades.result, cell: info => <ResultBadge result={info.getValue()} /> }),
         columnHelper.accessor('strategy', {
             header: 'Strategy',
             cell: info => <span className="text-xs font-mono" style={{ color: 'rgba(255,255,255,0.4)' }}>{info.getValue() || '—'}</span>
@@ -203,7 +205,7 @@ export function Trades() {
     });
 
     const RESULT_OPTIONS = [
-        { value: '', label: 'All Results' }, { value: 'TP', label: 'Take Profit' },
+        { value: '', label: t.trades.result }, { value: 'TP', label: 'Take Profit' },
         { value: 'SL', label: 'Stop Loss' }, { value: 'BE', label: 'Break Even' },
         { value: 'Partial', label: 'Partial' }, { value: 'Manual Close', label: 'Manual' }, { value: 'Running', label: 'Running' },
     ];
@@ -222,14 +224,14 @@ export function Trades() {
             {/* ── Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <p className="section-label mb-1">Journal</p>
+                    <p className="section-label mb-1">{t.common.journal}</p>
                     <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                         <BookOpen size={20} style={{ color: '#a78bfa' }} />
-                        Trade Journal
+                        {t.trades.allTrades}
                     </h2>
                 </div>
                 <Link to="/app/trades/new" className="btn-primary">
-                    <Plus size={15} /> Add Trade
+                    <Plus size={15} /> {t.trades.addTrade}
                 </Link>
             </div>
 
@@ -240,7 +242,7 @@ export function Trades() {
                     <div className="relative flex-1 min-w-48 max-w-xs">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.3)' }} />
                         <input value={search} onChange={e => setSearch(e.target.value)}
-                            placeholder="Search pair or notes…"
+                            placeholder={t.trades.searchPair}
                             className="input-field pl-9 py-2 text-xs"
                             style={{ background: 'rgba(255,255,255,0.04)' }} />
                     </div>
@@ -253,7 +255,7 @@ export function Trades() {
                                 ? { background: 'rgba(124,58,237,0.2)', border: '1px solid rgba(124,58,237,0.4)', color: '#a78bfa' }
                                 : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }}>
                             <SlidersHorizontal size={13} />
-                            Filters
+                            {t.trades.filterBy}
                             {activeFilters > 0 && (
                                 <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black"
                                     style={{ background: '#7c3aed', color: '#fff' }}>{activeFilters}</span>
@@ -267,12 +269,12 @@ export function Trades() {
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="flex items-center gap-2">
                                         <Filter size={14} style={{ color: '#a78bfa' }} />
-                                        <span className="font-bold text-white text-sm">Filter Trades</span>
+                                        <span className="font-bold text-white text-sm">Filters</span>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         {activeFilters > 0 && (
                                             <button onClick={clearAllFilters} className="text-xs font-bold transition-colors"
-                                                style={{ color: '#ef4444' }}>Clear</button>
+                                                style={{ color: '#ef4444' }}>{t.trades.clearFilters.split(' ')[0]}</button>
                                         )}
                                         <button onClick={() => setShowFilters(false)} className="p-1 md:hidden">
                                             <X size={18} style={{ color: 'rgba(255,255,255,0.3)' }} />
@@ -300,7 +302,7 @@ export function Trades() {
                                         options={[{ value: '', label: 'All Strategies' }, ...strategies.map(s => ({ value: s, label: s }))]} />
 
                                     {/* Grade */}
-                                    <FilterSelect label="Trade Grade" value={fGrade} onChange={setFGrade} options={GRADE_OPTIONS} />
+                                    <FilterSelect label="Grade" value={fGrade} onChange={setFGrade} options={GRADE_OPTIONS} />
 
                                     {/* Date range */}
                                     <label className="flex flex-col gap-1">
@@ -326,7 +328,7 @@ export function Trades() {
                     {activeFilters > 0 && (
                         <button onClick={clearAllFilters} className="text-xs font-semibold flex items-center gap-1 transition-colors"
                             style={{ color: 'rgba(239,68,68,0.7)' }}>
-                            <X size={12} /> Clear filters
+                            <X size={12} /> {t.trades.clearFilters}
                         </button>
                     )}
                 </div>
@@ -393,7 +395,7 @@ export function Trades() {
                                                 <BookOpen size={24} style={{ color: 'rgba(255,255,255,0.2)' }} />
                                             </div>
                                             <p className="font-medium" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                                                {baseTrades.length === 0 ? 'No trades logged yet.' : 'No trades match your filters.'}
+                                                {baseTrades.length === 0 ? t.dashboard.noTrades : 'No trades match your filters.'}
                                             </p>
                                             {baseTrades.length === 0 ? (
                                                 <Link to="/app/trades/new" className="btn-primary text-xs px-4 py-2 mt-1">

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { ArrowRight, Eye, EyeOff, TrendingUp, ShieldCheck, Zap } from 'lucide-react';
+import { useTranslation } from '../hooks/useTranslation';
 
 
 
@@ -76,6 +77,7 @@ function AuthInput({ label, type, value, onChange, placeholder, id }: {
 function AuthLayout({ children, title, subtitle }: {
     children: React.ReactNode; title: string; subtitle: string;
 }) {
+    const { t } = useTranslation();
     return (
         <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#06060a', fontFamily: "'Space Grotesk', sans-serif" }}>
             <AuthBackground />
@@ -86,7 +88,7 @@ function AuthLayout({ children, title, subtitle }: {
                     style={{ color: 'rgba(255,255,255,0.3)' }}
                     onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
                     onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}>
-                    ← Back to home
+                    ← {t.auth.backToHome}
                 </Link>
 
                 {/* Logo */}
@@ -134,6 +136,7 @@ function AuthLayout({ children, title, subtitle }: {
 
 /* ── Sign In ────────────────────────────────────────────────── */
 export function SignIn() {
+    const { t } = useTranslation();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -155,7 +158,7 @@ export function SignIn() {
     };
 
     return (
-        <AuthLayout title="Welcome back." subtitle="Sign in to your trading journal.">
+        <AuthLayout title={t.auth.signInTitle} subtitle={t.auth.signInSub}>
             <form onSubmit={handleSubmit} className="space-y-5">
                 {error && (
                     <div className="flex items-center gap-2 p-3.5 rounded-2xl text-sm font-medium"
@@ -164,8 +167,8 @@ export function SignIn() {
                     </div>
                 )}
 
-                <AuthInput id="signin-email" label="Email" type="email" value={email} onChange={setEmail} placeholder="trader@example.com" />
-                <AuthInput id="signin-password" label="Password" type="password" value={password} onChange={setPassword} placeholder="••••••••" />
+                <AuthInput id="signin-email" label={t.auth.email} type="email" value={email} onChange={setEmail} placeholder="trader@example.com" />
+                <AuthInput id="signin-password" label={t.auth.password} type="password" value={password} onChange={setPassword} placeholder="••••••••" />
 
                 <button type="submit" disabled={loading}
                     className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-sm text-white transition-all mt-2 relative overflow-hidden"
@@ -173,19 +176,19 @@ export function SignIn() {
                     {loading ? (
                         <span className="flex items-center gap-2">
                             <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                            Signing in...
+                            {t.auth.authenticating}
                         </span>
                     ) : (
-                        <>Sign In <ArrowRight size={15} /></>
+                        <>{t.auth.signInBtn} <ArrowRight size={15} /></>
                     )}
                 </button>
 
                 <p className="text-center text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                    New to Seven Journal?{' '}
+                    {t.auth.noAccount}{' '}
                     <Link to="/signup" className="font-bold transition-colors" style={{ color: '#a78bfa' }}
                         onMouseEnter={e => (e.currentTarget.style.color = '#c4b5fd')}
                         onMouseLeave={e => (e.currentTarget.style.color = '#a78bfa')}>
-                        Create an account
+                        {t.auth.createOne}
                     </Link>
                 </p>
             </form>
@@ -195,6 +198,7 @@ export function SignIn() {
 
 /* ── Sign Up ────────────────────────────────────────────────── */
 export function SignUp() {
+    const { t } = useTranslation();
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -220,7 +224,7 @@ export function SignUp() {
     };
 
     return (
-        <AuthLayout title="Start your edge." subtitle="Create your free trading journal today.">
+        <AuthLayout title={t.auth.signUpTitle} subtitle={t.auth.signUpSub}>
             <form onSubmit={handleSubmit} className="space-y-4">
                 {error && (
                     <div className="flex items-center gap-2 p-3.5 rounded-2xl text-sm font-medium"
@@ -229,12 +233,12 @@ export function SignUp() {
                     </div>
                 )}
 
-                <AuthInput id="signup-username" label="Username" value={username} onChange={setUsername} placeholder="TraderOne" />
-                <AuthInput id="signup-email" label="Email" type="email" value={email} onChange={setEmail} placeholder="trader@example.com" />
+                <AuthInput id="signup-username" label={t.auth.username} value={username} onChange={setUsername} placeholder="TraderOne" />
+                <AuthInput id="signup-email" label={t.auth.email} type="email" value={email} onChange={setEmail} placeholder="trader@example.com" />
 
                 <div className="grid grid-cols-2 gap-3">
-                    <AuthInput id="signup-password" label="Password" type="password" value={password} onChange={setPassword} placeholder="8+ chars" />
-                    <AuthInput id="signup-confirm" label="Confirm" type="password" value={confirm} onChange={setConfirm} placeholder="Repeat" />
+                    <AuthInput id="signup-password" label={t.auth.password} type="password" value={password} onChange={setPassword} placeholder="8+ chars" />
+                    <AuthInput id="signup-confirm" label={t.common.cancel === 'Cancel' ? 'Confirm' : 'Confirmer'} type="password" value={confirm} onChange={setConfirm} placeholder="Repeat" />
                 </div>
 
                 <button type="submit" disabled={loading}
@@ -243,19 +247,19 @@ export function SignUp() {
                     {loading ? (
                         <span className="flex items-center gap-2">
                             <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                            Creating account...
+                            {t.auth.creating}
                         </span>
                     ) : (
-                        <>Create Free Account <ArrowRight size={15} /></>
+                        <>{t.auth.signUpBtn} <ArrowRight size={15} /></>
                     )}
                 </button>
 
                 <p className="text-center text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                    Already have an account?{' '}
+                    {t.auth.haveAccount}{' '}
                     <Link to="/signin" className="font-bold transition-colors" style={{ color: '#a78bfa' }}
                         onMouseEnter={e => (e.currentTarget.style.color = '#c4b5fd')}
                         onMouseLeave={e => (e.currentTarget.style.color = '#a78bfa')}>
-                        Sign in
+                        {t.auth.loginNow}
                     </Link>
                 </p>
             </form>

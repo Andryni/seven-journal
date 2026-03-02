@@ -2,8 +2,10 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTradeStore } from '../store/useTradeStore';
 import { ArrowLeft, Edit2, Trash2, TrendingUp, TrendingDown, Clock, Tag, Globe, FileText, Shield, Target, Brain, Camera } from 'lucide-react';
 import { format } from 'date-fns';
+import { useTranslation } from '../hooks/useTranslation';
 
 export function TradeDetail() {
+    const { t } = useTranslation();
     const { id } = useParams();
     const navigate = useNavigate();
     const { getTradeById, deleteTrade } = useTradeStore();
@@ -14,8 +16,8 @@ export function TradeDetail() {
     if (!trade) {
         return (
             <div className="glass-card p-20 flex flex-col items-center justify-center text-center">
-                <p className="text-text-secondary">Trade not found.</p>
-                <Link to="/app/trades" className="btn-primary mt-4 text-sm">← Back to Journal</Link>
+                <p className="text-text-secondary">{t.tradeDetail.tradeNotFound}</p>
+                <Link to="/app/trades" className="btn-primary mt-4 text-sm">← {t.tradeDetail.backToJournal}</Link>
             </div>
         );
     }
@@ -25,7 +27,7 @@ export function TradeDetail() {
     const isLoss = pnl < 0;
 
     const handleDelete = () => {
-        if (confirm("Delete this trade? This cannot be undone.")) {
+        if (confirm(t.tradeDetail.confirmDelete)) {
             if (trade.id) deleteTrade(trade.id);
             navigate('/app/trades');
         }
@@ -38,7 +40,7 @@ export function TradeDetail() {
                 <div className="p-1.5 rounded-lg bg-white/5 border border-white/10 group-hover:border-white/20 transition-all">
                     <ArrowLeft size={14} />
                 </div>
-                Back to Journal
+                {t.tradeDetail.backToJournal}
             </Link>
 
             {/* Header */}
@@ -67,11 +69,11 @@ export function TradeDetail() {
                     <div className="flex items-center gap-3">
                         <Link to={`/app/trades/${trade.id}/edit`}
                             className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-white text-xs font-bold">
-                            <Edit2 size={14} /> Edit Trade
+                            <Edit2 size={14} /> {t.tradeDetail.editTrade}
                         </Link>
                         <button onClick={handleDelete}
                             className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all border border-loss/25 bg-loss/10 hover:bg-loss/20 text-loss text-xs font-bold">
-                            <Trash2 size={14} /> Delete
+                            <Trash2 size={14} /> {t.tradeDetail.deleteTrade}
                         </button>
                     </div>
                 </div>
@@ -85,18 +87,18 @@ export function TradeDetail() {
                     {/* PnL Card */}
                     <div className="glass-card p-8 flex flex-col items-center justify-center text-center relative overflow-hidden group">
                         <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
-                        <p className="text-[10px] uppercase tracking-[0.2em] font-black text-white/30 mb-4">Total Net P&L</p>
+                        <p className="text-[10px] uppercase tracking-[0.2em] font-black text-white/30 mb-4">{t.tradeDetail.totalNetPnl}</p>
                         <span className={`text-5xl font-black font-mono leading-none tracking-tighter ${isWin ? 'profit-glow' : isLoss ? 'loss-glow' : 'text-white/60'}`}>
                             {pnl >= 0 ? '+' : ''}${Math.abs(pnl).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </span>
 
                         <div className="grid grid-cols-2 gap-4 mt-10 w-full pt-6 border-t border-white/[0.05]">
                             <div className="text-center">
-                                <p className="section-label mb-1">Actual R:R</p>
+                                <p className="section-label mb-1">{t.tradeDetail.actualRR}</p>
                                 <p className="font-mono font-black text-white text-xl">{trade.actualRR || '—'}R</p>
                             </div>
                             <div className="text-center border-l border-white/5">
-                                <p className="section-label mb-1">Commission</p>
+                                <p className="section-label mb-1">{t.tradeDetail.commission}</p>
                                 <p className="font-mono font-black text-white text-xl">${trade.commission || '0.00'}</p>
                             </div>
                         </div>
@@ -106,13 +108,13 @@ export function TradeDetail() {
                     <div className="glass-card p-6">
                         <div className="flex items-center gap-2 mb-6 text-primary-light">
                             <Shield size={16} />
-                            <h3 className="text-xs font-black uppercase tracking-wider">Risk Management</h3>
+                            <h3 className="text-xs font-black uppercase tracking-wider">{t.tradeDetail.riskManagement}</h3>
                         </div>
                         <div className="space-y-4">
                             {[
-                                { label: 'Planned Risk', val: `${trade.riskPlanned?.value}${trade.riskPlanned?.mode === 'percent' ? '%' : '$'}`, color: '#ef4444' },
-                                { label: 'Target Gain', val: `${trade.rewardPlanned?.value}${trade.rewardPlanned?.mode === 'percent' ? '%' : '$'}`, color: '#10b981' },
-                                { label: 'Planned R:R', val: `${trade.plannedRR}R`, color: '#a78bfa' },
+                                { label: t.tradeDetail.plannedRisk, val: `${trade.riskPlanned?.value}${trade.riskPlanned?.mode === 'percent' ? '%' : '$'}`, color: '#ef4444' },
+                                { label: t.tradeDetail.targetGain, val: `${trade.rewardPlanned?.value}${trade.rewardPlanned?.mode === 'percent' ? '%' : '$'}`, color: '#10b981' },
+                                { label: t.tradeDetail.plannedRR, val: `${trade.plannedRR}R`, color: '#a78bfa' },
                             ].map(({ label, val, color }) => (
                                 <div key={label} className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
                                     <span className="text-[11px] font-bold text-white/40 uppercase">{label}</span>
@@ -130,14 +132,14 @@ export function TradeDetail() {
                         <div className="glass-card p-6">
                             <div className="flex items-center gap-2 mb-6 text-cyan-400">
                                 <Target size={16} />
-                                <h3 className="text-xs font-black uppercase tracking-wider">Trade Context</h3>
+                                <h3 className="text-xs font-black uppercase tracking-wider">{t.tradeDetail.tradeContext}</h3>
                             </div>
                             <div className="space-y-2">
                                 {[
-                                    { Icon: Globe, label: 'Session', val: trade.session, color: '#06b6d4' },
-                                    { Icon: Tag, label: 'Strategy', val: trade.strategy, color: '#a78bfa' },
-                                    { Icon: Clock, label: 'Timeframe', val: trade.timeframe, color: '#94a3b8' },
-                                    { Icon: Clock, label: 'Duration', val: trade.duration ? `${trade.duration} min` : 'Running', color: '#64748b' },
+                                    { Icon: Globe, label: t.tradeDetail.session, val: trade.session, color: '#06b6d4' },
+                                    { Icon: Tag, label: t.tradeDetail.strategy, val: trade.strategy, color: '#a78bfa' },
+                                    { Icon: Clock, label: t.tradeDetail.timeframe, val: trade.timeframe, color: '#94a3b8' },
+                                    { Icon: Clock, label: t.tradeDetail.duration, val: trade.duration ? `${trade.duration} min` : 'Running', color: '#64748b' },
                                 ].map(({ Icon, label, val, color }) => val && (
                                     <div key={label} className="flex items-center justify-between py-2.5 border-b border-white/[0.04] last:border-0 hover:translate-x-1 transition-transform">
                                         <div className="flex items-center gap-2.5 text-white/40 text-xs font-bold">
@@ -154,24 +156,24 @@ export function TradeDetail() {
                         <div className="glass-card p-6">
                             <div className="flex items-center gap-2 mb-6 text-violet-400">
                                 <Brain size={16} />
-                                <h3 className="text-xs font-black uppercase tracking-wider">Psychology</h3>
+                                <h3 className="text-xs font-black uppercase tracking-wider">{t.tradeDetail.psychology}</h3>
                             </div>
                             <div className="space-y-4">
                                 <div>
-                                    <p className="text-[10px] font-black uppercase text-white/20 mb-2">Internal State</p>
+                                    <p className="text-[10px] font-black uppercase text-white/20 mb-2">{t.tradeDetail.internalState}</p>
                                     <div className="flex flex-wrap gap-2">
-                                        {trade.emotionBefore && <span className="px-3 py-1.5 rounded-lg text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">Pre: {trade.emotionBefore}</span>}
-                                        {trade.emotionAfter && <span className="px-3 py-1.5 rounded-lg text-[10px] font-bold bg-profit/10 text-profit border border-profit/20">Post: {trade.emotionAfter}</span>}
+                                        {trade.emotionBefore && <span className="px-3 py-1.5 rounded-lg text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">{t.tradeDetail.pre}: {trade.emotionBefore}</span>}
+                                        {trade.emotionAfter && <span className="px-3 py-1.5 rounded-lg text-[10px] font-bold bg-profit/10 text-profit border border-profit/20">{t.tradeDetail.post}: {trade.emotionAfter}</span>}
                                     </div>
                                 </div>
                                 <div className="pt-4 border-t border-white/5">
-                                    <p className="text-[10px] font-black uppercase text-white/20 mb-2">Trade Grade</p>
+                                    <p className="text-[10px] font-black uppercase text-white/20 mb-2">{t.tradeDetail.tradeGrade}</p>
                                     {trade.tradeGrade ? (
                                         <div className="flex items-center gap-3">
                                             <span className="text-4xl font-black text-primary-light">{trade.tradeGrade}</span>
-                                            <span className="text-[10px] font-bold text-white/40 leading-tight">Mastery of<br />Execution</span>
+                                            <span className="text-[10px] font-bold text-white/40 leading-tight">{t.tradeDetail.masteryExecution.split(' ').slice(0, 2).join(' ')}<br />{t.tradeDetail.masteryExecution.split(' ').slice(2).join(' ')}</span>
                                         </div>
-                                    ) : <span className="text-xs text-white/30 italic">Not graded</span>}
+                                    ) : <span className="text-xs text-white/30 italic">{t.tradeDetail.notGraded}</span>}
                                 </div>
                             </div>
                         </div>
@@ -182,12 +184,12 @@ export function TradeDetail() {
                         <div className="glass-card p-6">
                             <div className="flex items-center gap-2 mb-6">
                                 <Camera size={16} className="text-primary-light" />
-                                <h3 className="text-xs font-black uppercase tracking-wider">Visual Evidence</h3>
+                                <h3 className="text-xs font-black uppercase tracking-wider">{t.tradeDetail.visualEvidence}</h3>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {trade.setupBeforeUrl && (
                                     <div className="space-y-2">
-                                        <p className="section-label">Setup (Before)</p>
+                                        <p className="section-label">{t.tradeDetail.setupBefore}</p>
                                         <div className="rounded-xl overflow-hidden border border-white/10 aspect-video bg-white/5">
                                             <img src={trade.setupBeforeUrl} alt="Setup Before" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
                                         </div>
@@ -195,7 +197,7 @@ export function TradeDetail() {
                                 )}
                                 {trade.setupAfterUrl && (
                                     <div className="space-y-2">
-                                        <p className="section-label">Result (After)</p>
+                                        <p className="section-label">{t.tradeDetail.resultAfter}</p>
                                         <div className="rounded-xl overflow-hidden border border-white/10 aspect-video bg-white/5">
                                             <img src={trade.setupAfterUrl} alt="Setup After" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
                                         </div>

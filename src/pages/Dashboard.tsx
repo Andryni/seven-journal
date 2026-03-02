@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { format, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, parseISO as parseDate } from 'date-fns';
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from '../hooks/useTranslation';
 
 type Period = 'daily' | 'weekly' | 'monthly' | 'all' | 'custom';
 
@@ -34,11 +35,13 @@ function PeriodFilter({ active, onSelect, customFrom, customTo, onCustomChange }
         return () => document.removeEventListener('mousedown', close);
     }, []);
 
+    const { t } = useTranslation();
+
     const PERIODS: { key: Period; label: string }[] = [
-        { key: 'daily', label: 'Day' },
+        { key: 'daily', label: t.calendar.jumpToToday },
         { key: 'weekly', label: 'Week' },
         { key: 'monthly', label: 'Month' },
-        { key: 'all', label: 'All Time' },
+        { key: 'all', label: t.calendar.allTime },
     ];
 
     return (
@@ -97,6 +100,7 @@ function PeriodFilter({ active, onSelect, customFrom, customTo, onCustomChange }
 export function Dashboard() {
     const activeAccountId = useAuthStore(state => state.currentUser?.activeAccountId);
     const allTrades = useTradeStore(state => state.trades);
+    const { t } = useTranslation();
 
     const [period, setPeriod] = useState<Period>('all');
     const [customFrom, setCustomFrom] = useState('');
@@ -156,9 +160,9 @@ export function Dashboard() {
                 <div className="relative z-10">
                     <p className="section-label mb-2">Welcome back</p>
                     <h2 className="text-2xl md:text-3xl font-bold text-white mb-1">
-                        Ready to <span style={{ color: '#a78bfa' }}>trade?</span>
+                        {t.dashboard.readyToTrade.split('?')[0]} <span style={{ color: '#a78bfa' }}>{t.dashboard.readyToTrade.includes('?') ? 'trade?' : 'trade'}</span>
                     </h2>
-                    <p className="text-xs md:text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>Track, analyze, and improve your edge daily.</p>
+                    <p className="text-xs md:text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>{t.dashboard.sessionReady}</p>
                 </div>
 
                 <div className="relative z-10 flex flex-row md:flex-row items-center justify-between md:justify-end gap-4 md:gap-6 w-full md:w-auto mt-2 md:mt-0">
@@ -169,7 +173,7 @@ export function Dashboard() {
                         </span>
                     </div>
                     <Link to="/app/trades/new" className="btn-primary px-4 py-2.5 md:px-6 md:py-3 text-xs md:text-sm whitespace-nowrap">
-                        + Log Trade
+                        + {t.trades.addTrade}
                     </Link>
                 </div>
             </div>
@@ -197,7 +201,7 @@ export function Dashboard() {
             {/* ── KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <KpiCard title="Net P&L" value={`${isProfit ? '+' : ''}$${Math.abs(totalPnL).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} trend={isProfit ? 'up' : 'down'} Icon={TrendingUp} color={isProfit ? 'profit' : 'loss'} delay="stagger-1" />
-                <KpiCard title="Win Rate" value={`${winrate.toFixed(1)}%`} trend={winrate >= 50 ? 'up' : 'down'} Icon={Target} color="primary" delay="stagger-2" />
+                <KpiCard title={t.dashboard.winRate} value={`${winrate.toFixed(1)}%`} trend={winrate >= 50 ? 'up' : 'down'} Icon={Target} color="primary" delay="stagger-2" />
                 <KpiCard title="Total Trades" value={totalTrades.toString()} trend="up" Icon={Activity} color="cyan" delay="stagger-3" />
                 <KpiCard title="Profit Factor" value={profitFactor === Infinity ? '∞' : profitFactor.toFixed(2)} trend={profitFactor >= 1.5 ? 'up' : 'down'} Icon={Flame} color={profitFactor >= 1.5 ? 'profit' : 'loss'} delay="stagger-4" />
             </div>
@@ -209,7 +213,7 @@ export function Dashboard() {
                 <div className="lg:col-span-2 glass-card p-6 h-[420px] flex flex-col candle-bg">
                     <div className="flex justify-between items-center mb-6 relative z-10">
                         <div>
-                            <p className="section-label mb-1">Equity Curve</p>
+                            <p className="section-label mb-1">{t.dashboard.equityCurve}</p>
                             <h3 className="text-xl font-bold text-white">Performance History</h3>
                         </div>
                         <span className="text-xs font-mono px-2 py-1 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.35)' }}>
@@ -247,8 +251,8 @@ export function Dashboard() {
                 <div className="glass-card p-6 flex flex-col">
                     <div className="flex items-center justify-between mb-5">
                         <div>
-                            <p className="section-label mb-1">Activity</p>
-                            <h3 className="text-xl font-bold text-white">Recent Trades</h3>
+                            <p className="section-label mb-1">{t.dashboard.quickStats}</p>
+                            <h3 className="text-xl font-bold text-white">{t.dashboard.recentTrades}</h3>
                         </div>
                         <div className="p-2 rounded-xl" style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.2)' }}>
                             <BarChart3 size={16} style={{ color: '#a78bfa' }} />
@@ -293,7 +297,7 @@ export function Dashboard() {
                             style={{ border: '1px solid rgba(124,58,237,0.2)', color: '#a78bfa' }}
                             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(124,58,237,0.1)'; }}
                             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
-                            View All Activity →
+                            {t.dashboard.viewAll} →
                         </Link>
                     )}
                 </div>
@@ -305,7 +309,7 @@ export function Dashboard() {
                     { label: 'Wins', value: closedTrades.filter(t => (t.netPnl || 0) > 0).length, color: 'text-profit', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.15)' },
                     { label: 'Losses', value: closedTrades.filter(t => (t.netPnl || 0) < 0).length, color: 'text-loss', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.15)' },
                     { label: 'BE', value: closedTrades.filter(t => (t.netPnl || 0) === 0).length, color: 'text-yellow-400', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.15)' },
-                    { label: 'Running', value: allAccountTrades.filter(t => t.result === 'Running').length, color: 'text-accent-cyan', bg: 'rgba(6,182,212,0.08)', border: 'rgba(6,182,212,0.15)' },
+                    { label: t.trades.open, value: allAccountTrades.filter(t => t.result === 'Running').length, color: 'text-accent-cyan', bg: 'rgba(6,182,212,0.08)', border: 'rgba(6,182,212,0.15)' },
                 ].map(({ label, value, color, bg, border }) => (
                     <div key={label} className="rounded-2xl p-4 text-center flex flex-col items-center gap-1"
                         style={{ background: bg, border: `1px solid ${border}` }}>

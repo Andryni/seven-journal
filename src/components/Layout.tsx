@@ -76,7 +76,7 @@ function AccountSwitcher() {
                 </div>
                 <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold text-white truncate leading-none">
-                        {activeAccount?.name ?? 'Select Account'}
+                        {activeAccount?.name ?? t.navigation.selectAccount}
                     </p>
                     <p className="text-[10px] font-mono mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.3)' }}>
                         {activeAccount ? `$${(activeAccount.initialCapital ?? 0).toLocaleString()}` : '—'}
@@ -117,7 +117,7 @@ function AccountSwitcher() {
                                     {isActive && (
                                         <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md flex-shrink-0"
                                             style={{ background: 'rgba(124,58,237,0.3)', color: '#a78bfa' }}>
-                                            Active
+                                            {t.navigation.active}
                                         </span>
                                     )}
                                 </button>
@@ -130,7 +130,7 @@ function AccountSwitcher() {
                             style={{ color: 'rgba(255,255,255,0.35)' }}
                             onMouseEnter={e => (e.currentTarget.style.color = '#a78bfa')}
                             onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.35)')}>
-                            <Plus size={12} /> {t.navigation.home}
+                            <Plus size={12} /> {t.settings.createAccount}
                         </button>
                     </div>
                 </div>
@@ -201,7 +201,7 @@ export function Layout() {
     }, [accountTrades, activeAccountId]);
 
     const bestPair = useMemo(() => {
-        if (pairStats.length === 0) return { pair: 'EMPTY', change: '0.00', isUp: true };
+        if (pairStats.length === 0) return { pair: 'TRADES', change: '0.00', isUp: true };
         return [...pairStats].sort((a, b) => Math.abs(parseFloat(b.change)) - Math.abs(parseFloat(a.change)))[0];
     }, [pairStats]);
 
@@ -214,8 +214,8 @@ export function Layout() {
 
         const sorted = Object.entries(sessionPnL).sort((a, b) => b[1] - a[1]);
         if (sorted.length === 0) return 'NO SESSION';
-        return `${sorted[0][0]} Session`;
-    }, [accountTrades]);
+        return `${sorted[0][0]} ${t.navigation.session}`;
+    }, [accountTrades, t]);
 
     const tickerItems = useMemo(() => {
         if (pairStats.length === 0) return Array(6).fill({ pair: 'TRADES', change: '0.00', isUp: true });

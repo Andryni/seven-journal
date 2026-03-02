@@ -31,7 +31,7 @@ export function Settings() {
     const tabs = TABS(t);
 
     const exportCSV = () => {
-        if (trades.length === 0) return alert("No trades to export.");
+        if (trades.length === 0) return alert(t.common.noData);
         const headers = Object.keys(trades[0]).join(',');
         const rows = trades.map(t => Object.values(t).map(v => typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : v).join(','));
         const link = Object.assign(document.createElement('a'), {
@@ -58,7 +58,7 @@ export function Settings() {
         doc.setFontSize(9);
         doc.text(`Generated: ${format(new Date(), 'PPp')}`, 14, 22);
         (doc as any).autoTable({
-            head: [["Date", "Pair", "Direction", "Result", "Net PnL"]],
+            head: [[t.trades.date || 'Date', t.tradeForm.pair, t.tradeForm.side, t.tradeForm.result, "Net PnL"]],
             body: trades.map(t => [
                 format(new Date(t.openedAt), 'yyyy-MM-dd'), t.pair, t.position, t.result,
                 t.netPnl !== null ? `$${t.netPnl?.toFixed(2)}` : '-'
@@ -73,7 +73,7 @@ export function Settings() {
     return (
         <div className="space-y-6 animate-fade-scale">
             <div>
-                <p className="section-label mb-1">Configuration</p>
+                <p className="section-label mb-1">{t.settings.config}</p>
                 <h2 className="text-2xl font-bold text-white">{t.common.settings}</h2>
             </div>
 
@@ -164,12 +164,12 @@ export function Settings() {
                 {activeTab === 'Accounts' && (
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                         <div className="space-y-4">
-                            <p className="section-label mb-4">Your Accounts ({accounts.length})</p>
+                            <p className="section-label mb-4">{t.settings.yourAccounts} ({accounts.length})</p>
                             {accounts.length === 0 ? (
                                 <div className="flex flex-col items-center py-12 rounded-2xl text-center"
                                     style={{ background: 'rgba(255,255,255,0.02)', border: '2px dashed rgba(255,255,255,0.08)' }}>
                                     <Wallet size={28} className="text-text-muted mb-3 opacity-30" />
-                                    <p className="text-text-muted text-sm">No accounts yet. Create your first.</p>
+                                    <p className="text-text-muted text-sm">{t.settings.noAccounts}</p>
                                 </div>
                             ) : accounts.map(acc => {
                                 const isActive = currentUser?.activeAccountId === acc.id;
@@ -197,12 +197,12 @@ export function Settings() {
                                         </div>
                                         <div className="flex justify-between items-end">
                                             <div>
-                                                <p className="section-label mb-0.5">Balance</p>
+                                                <p className="section-label mb-0.5">{t.settings.balance}</p>
                                                 <p className="font-mono font-bold text-lg text-white">${acc.currentBalance.toLocaleString()}</p>
                                             </div>
                                             {isActive && (
                                                 <span className="text-[10px] font-bold text-profit flex items-center gap-1">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-profit animate-blink" /> ACTIVE
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-profit animate-blink" /> {t.settings.active}
                                                 </span>
                                             )}
                                         </div>
@@ -212,7 +212,7 @@ export function Settings() {
                         </div>
 
                         <div>
-                            <p className="section-label mb-4">Create New Account</p>
+                            <p className="section-label mb-4">{t.settings.createAccount}</p>
                             <div className="rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
                                 <AccountForm onCreated={() => { }} />
                             </div>
@@ -226,13 +226,13 @@ export function Settings() {
                         <div>
                             <div className="flex items-center gap-2 mb-6">
                                 <Download size={18} className="text-primary-light" />
-                                <h3 className="font-bold text-lg">Export Data</h3>
+                                <h3 className="font-bold text-lg">{t.settings.exportData}</h3>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                 {[
-                                    { title: 'CSV Export', desc: 'Download raw trade history for Excel.', cta: 'Download CSV', fn: exportCSV, style: 'default' },
-                                    { title: 'JSON Backup', desc: 'Complete backup with all trades & debriefs.', cta: 'Download Backup', fn: exportJSON, style: 'default' },
-                                    { title: 'PDF Report', desc: 'Printable professional PDF trading report.', cta: 'Generate PDF', fn: exportPDF, style: 'primary' },
+                                    { title: t.settings.csvExport, desc: t.settings.csvDesc, cta: t.settings.csvCta, fn: exportCSV, style: 'default' },
+                                    { title: t.settings.jsonBackup, desc: t.settings.jsonDesc, cta: t.settings.jsonCta, fn: exportJSON, style: 'default' },
+                                    { title: t.settings.pdfReport, desc: t.settings.pdfDesc, cta: t.settings.pdfCta, fn: exportPDF, style: 'primary' },
                                 ].map(({ title, desc, cta, fn, style }) => (
                                     <div key={title} className="rounded-2xl p-5 flex flex-col gap-4"
                                         style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
@@ -256,15 +256,15 @@ export function Settings() {
                                         <AlertTriangle size={18} className="text-loss" />
                                     </div>
                                     <div>
-                                        <p className="font-bold text-loss mb-1">Danger Zone — Factory Reset</p>
-                                        <p className="text-text-muted text-sm">This will permanently erase all trades, debriefs, and settings. No undo.</p>
+                                        <p className="font-bold text-loss mb-1">{t.settings.dangerZone}</p>
+                                        <p className="text-text-muted text-sm">{t.settings.resetDesc}</p>
                                     </div>
                                 </div>
                                 <button
                                     disabled
                                     className="flex-shrink-0 px-5 py-2.5 rounded-xl font-bold text-sm text-text-muted transition-all cursor-not-allowed"
                                     style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                    Reset Not Available
+                                    {t.settings.notAvailable}
                                 </button>
                             </div>
                         </div>
@@ -304,16 +304,16 @@ const AccountForm = ({ onCreated }: { onCreated: () => void }) => {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-                <label className="section-label mb-2 block">Account Name</label>
-                <input required value={name} onChange={e => setName(e.target.value)} className="input-field" placeholder="e.g. FTMO Phase 1" />
+                <label className="section-label mb-2 block">{t.settings.accountName}</label>
+                <input required value={name} onChange={e => setName(e.target.value)} className="input-field" placeholder="e.g. My Account" />
             </div>
             <div className="grid grid-cols-2 gap-3">
                 <div>
-                    <label className="section-label mb-2 block">Starting Balance</label>
+                    <label className="section-label mb-2 block">{t.settings.startingBalance}</label>
                     <input type="number" required value={balance} onChange={e => setBalance(e.target.value)} className="input-field" />
                 </div>
                 <div>
-                    <label className="section-label mb-2 block">Currency</label>
+                    <label className="section-label mb-2 block">{t.settings.currency}</label>
                     <select value={currency} onChange={e => setCurrency(e.target.value as any)} className="input-field">
                         {["USD", "EUR", "GBP", "CHF", "JPY", "CAD", "AUD"].map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
@@ -321,13 +321,16 @@ const AccountForm = ({ onCreated }: { onCreated: () => void }) => {
             </div>
             <div className="grid grid-cols-2 gap-3">
                 <div>
-                    <label className="section-label mb-2 block">Broker</label>
-                    <input required value={broker} onChange={e => setBroker(e.target.value)} className="input-field" placeholder="IC Markets" />
+                    <label className="section-label mb-2 block">{t.settings.broker}</label>
+                    <input required value={broker} onChange={e => setBroker(e.target.value)} className="input-field" placeholder="Prop Firm etc" />
                 </div>
                 <div>
-                    <label className="section-label mb-2 block">Type</label>
+                    <label className="section-label mb-2 block">{t.settings.type}</label>
                     <select value={type} onChange={e => setType(e.target.value as any)} className="input-field">
-                        {["Demo", "Real", "Propfirm", "Funded"].map(t => <option key={t} value={t}>{t}</option>)}
+                        {["Demo", "Real", "Propfirm", "Funded"].map(typeKey => {
+                            const label = typeKey === 'Demo' ? t.settings.demo : typeKey === 'Real' ? t.settings.real : typeKey === 'Propfirm' ? t.settings.propfirm : t.settings.funded;
+                            return <option key={typeKey} value={typeKey}>{label}</option>
+                        })}
                     </select>
                 </div>
             </div>
@@ -335,12 +338,12 @@ const AccountForm = ({ onCreated }: { onCreated: () => void }) => {
                 {isSaving ? (
                     <span className="flex items-center gap-2">
                         <span className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-                        Creating...
+                        {t.settings.creating}
                     </span>
                 ) : created ? (
-                    <><Check size={15} /> Account Created!</>
+                    <><Check size={15} /> {t.settings.accountCreated}</>
                 ) : (
-                    <><Plus size={15} /> Create Account</>
+                    <><Plus size={15} /> {t.settings.createAccount}</>
                 )}
             </button>
         </form>

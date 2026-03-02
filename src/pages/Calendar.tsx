@@ -7,6 +7,7 @@ import {
     ChevronLeft, ChevronRight, TrendingUp, TrendingDown,
     BookOpen, CalendarDays, Activity, Target, BarChart3, Flame
 } from 'lucide-react';
+import { useTranslation } from '../hooks/useTranslation';
 
 const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
@@ -19,6 +20,7 @@ function startMon(date: Date) {
 }
 
 export function Calendar() {
+    const { t } = useTranslation();
     const [viewDate, setViewDate] = useState(new Date());
     const [selected, setSelected] = useState<Date>(new Date());
 
@@ -165,7 +167,7 @@ export function Calendar() {
                         <p className="section-label mb-1">Timeline</p>
                         <h2 className="text-xl md:text-2xl font-bold flex items-center gap-2">
                             <CalendarDays size={20} className="text-violet-400" />
-                            <span className="truncate">Trading Calendar</span>
+                            <span className="truncate">{t.common.calendar}</span>
                         </h2>
                     </div>
 
@@ -174,8 +176,8 @@ export function Calendar() {
                         {/* Legend */}
                         <div className="hidden lg:flex items-center gap-4 mr-4 text-xs font-bold">
                             {[
-                                { color: '#10b981', bg: 'rgba(16,185,129,0.15)', label: 'Profit' },
-                                { color: '#ef4444', bg: 'rgba(239,68,68,0.15)', label: 'Loss' },
+                                { color: '#10b981', bg: 'rgba(16,185,129,0.15)', label: t.trades.win },
+                                { color: '#ef4444', bg: 'rgba(239,68,68,0.15)', label: t.trades.loss },
                             ].map(({ color, bg, label }) => (
                                 <div key={label} className="flex items-center gap-1.5">
                                     <span className="w-3 h-3 rounded-md" style={{ background: bg, border: `1px solid ${color}40` }} />
@@ -202,7 +204,7 @@ export function Calendar() {
                         <button onClick={() => { setViewDate(new Date()); setSelected(new Date()); }}
                             className="h-10 px-3 md:px-4 py-2 rounded-xl text-[11px] md:text-xs font-bold transition-colors"
                             style={{ background: 'rgba(124,58,237,0.15)', color: '#a78bfa', border: '1px solid rgba(124,58,237,0.25)' }}>
-                            Today
+                            {t.calendar.jumpToToday}
                         </button>
                     </div>
                 </div>
@@ -239,7 +241,7 @@ export function Calendar() {
                 <div className="glass-card p-5">
                     <div className="flex items-center gap-2 mb-4">
                         <BarChart3 size={14} className="text-violet-400" />
-                        <span className="section-label">{format(viewDate, 'MMMM')} Stats</span>
+                        <span className="section-label">{format(viewDate, 'MMMM')} {t.calendar.summary}</span>
                     </div>
 
                     <div className="space-y-3">
@@ -321,7 +323,7 @@ export function Calendar() {
                         }}
                         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(124,58,237,0.25)'; }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(124,58,237,0.15)'; }}>
-                        <BookOpen size={13} /> Open Debrief
+                        <BookOpen size={13} /> {t.navigation.debriefs}
                     </Link>
 
                     {/* Trade list */}
@@ -329,7 +331,7 @@ export function Calendar() {
                         <div className="flex flex-col items-center py-6 text-center"
                             style={{ background: 'rgba(255,255,255,0.01)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.06)' }}>
                             <CalendarDays size={20} className="mb-2 opacity-20" style={{ color: 'rgba(255,255,255,0.5)' }} />
-                            <p className="text-xs italic" style={{ color: 'rgba(255,255,255,0.2)' }}>No trades on this day</p>
+                            <p className="text-xs italic" style={{ color: 'rgba(255,255,255,0.2)' }}>{t.common.noData}</p>
                         </div>
                     ) : (
                         <div className="space-y-2">
