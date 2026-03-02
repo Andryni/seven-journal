@@ -335,19 +335,39 @@ export function Analytics() {
                     </CardHeader>
                     <CardContent className="p-7 pt-4">
                         <ChartContainer config={assetConfig} className="min-h-[300px] w-full">
-                            <BarChart accessibilityLayer data={stats.pairData}>
+                            <BarChart accessibilityLayer data={stats.pairData} margin={{ top: 20 }}>
+                                <defs>
+                                    <linearGradient id="assetWin" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
+                                        <stop offset="100%" stopColor="#059669" stopOpacity={0.7} />
+                                    </linearGradient>
+                                    <linearGradient id="assetLoss" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
+                                        <stop offset="100%" stopColor="#b91c1c" stopOpacity={0.7} />
+                                    </linearGradient>
+                                </defs>
                                 <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.03)" />
                                 <ChartTooltip
-                                    cursor={false}
+                                    cursor={{ fill: 'rgba(255,255,255,0.03)' }}
                                     content={<ChartTooltipContent hideLabel hideIndicator className="glass-card border-primary/20" />}
                                 />
-                                <Bar dataKey="pnl">
-                                    <LabelList position="top" dataKey="name" fillOpacity={0.6} fill="#fff" fontSize={10} className="font-mono font-bold" />
+                                <Bar dataKey="pnl" radius={4}>
+                                    <LabelList
+                                        position="top"
+                                        dataKey="name"
+                                        fill="#fff"
+                                        fillOpacity={0.9}
+                                        fontSize={11}
+                                        className="font-mono font-bold"
+                                        offset={12}
+                                    />
                                     {stats.pairData.map((item) => (
                                         <Cell
                                             key={item.name}
-                                            fill={item.pnl > 0 ? "#10b981" : "#ef4444"}
-                                            fillOpacity={0.8}
+                                            fill={item.pnl > 0 ? "url(#assetWin)" : "url(#assetLoss)"}
+                                            stroke={item.pnl > 0 ? "#10b981" : "#ef4444"}
+                                            strokeWidth={1}
+                                            strokeOpacity={0.3}
                                         />
                                     ))}
                                 </Bar>
@@ -381,31 +401,45 @@ export function Analytics() {
                     <CardContent className="p-7 pt-4">
                         <ChartContainer config={timeframeConfig} className="min-h-[300px] w-full">
                             <BarChart accessibilityLayer data={stats.timeframeData}>
+                                <defs>
+                                    <linearGradient id="tfWin" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.9} />
+                                        <stop offset="100%" stopColor="#10b981" stopOpacity={0.4} />
+                                    </linearGradient>
+                                    <linearGradient id="tfLoss" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#ef4444" stopOpacity={0.9} />
+                                        <stop offset="100%" stopColor="#ef4444" stopOpacity={0.4} />
+                                    </linearGradient>
+                                </defs>
                                 <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.03)" />
                                 <XAxis
                                     dataKey="name"
                                     tickLine={false}
                                     tickMargin={10}
                                     axisLine={false}
-                                    tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11, fontFamily: 'JetBrains Mono' }}
+                                    tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 11, fontFamily: 'JetBrains Mono', fontWeight: 600 }}
                                 />
                                 <Bar
                                     dataKey="win"
                                     stackId="a"
-                                    fill="var(--color-win)"
+                                    fill="url(#tfWin)"
                                     radius={[4, 4, 0, 0]}
-                                    fillOpacity={0.8}
+                                    stroke="#10b981"
+                                    strokeWidth={1}
+                                    strokeOpacity={0.2}
                                 />
                                 <Bar
                                     dataKey="loss"
                                     stackId="a"
-                                    fill="var(--color-loss)"
+                                    fill="url(#tfLoss)"
                                     radius={[0, 0, 4, 4]}
-                                    fillOpacity={0.8}
+                                    stroke="#ef4444"
+                                    strokeWidth={1}
+                                    strokeOpacity={0.2}
                                 />
                                 <ChartTooltip
-                                    content={<ChartTooltipContent className="glass-card border-primary/20" />}
-                                    cursor={false}
+                                    content={<ChartTooltipContent className="glass-card border-primary/20 shadow-2xl" />}
+                                    cursor={{ fill: 'rgba(255,255,255,0.02)' }}
                                 />
                             </BarChart>
                         </ChartContainer>
@@ -422,7 +456,17 @@ export function Analytics() {
                     </CardHeader>
                     <CardContent className="p-7 pt-4">
                         <ChartContainer config={timeframeConfig} className="min-h-[300px] w-full">
-                            <BarChart accessibilityLayer data={stats.dayPerformance}>
+                            <BarChart accessibilityLayer data={stats.dayPerformance} barGap={8}>
+                                <defs>
+                                    <linearGradient id="dayWin" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
+                                        <stop offset="100%" stopColor="#10b981" stopOpacity={0.5} />
+                                    </linearGradient>
+                                    <linearGradient id="dayLoss" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
+                                        <stop offset="100%" stopColor="#ef4444" stopOpacity={0.5} />
+                                    </linearGradient>
+                                </defs>
                                 <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.03)" />
                                 <XAxis
                                     dataKey="name"
@@ -430,14 +474,14 @@ export function Analytics() {
                                     tickMargin={10}
                                     axisLine={false}
                                     tickFormatter={(value) => value.slice(0, 3)}
-                                    tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11, fontFamily: 'JetBrains Mono' }}
+                                    tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 11, fontFamily: 'JetBrains Mono', fontWeight: 600 }}
                                 />
                                 <ChartTooltip
-                                    cursor={false}
-                                    content={<ChartTooltipContent indicator="dashed" className="glass-card border-primary/20" />}
+                                    cursor={{ fill: 'rgba(255,255,255,0.02)' }}
+                                    content={<ChartTooltipContent indicator="dashed" className="glass-card border-primary/20 shadow-2xl" />}
                                 />
-                                <Bar dataKey="win" fill="var(--color-win)" radius={4} fillOpacity={0.8} />
-                                <Bar dataKey="loss" fill="var(--color-loss)" radius={4} fillOpacity={0.8} />
+                                <Bar dataKey="win" fill="url(#dayWin)" radius={[4, 4, 0, 0]} stroke="#10b981" strokeWidth={1} strokeOpacity={0.2} />
+                                <Bar dataKey="loss" fill="url(#dayLoss)" radius={[4, 4, 0, 0]} stroke="#ef4444" strokeWidth={1} strokeOpacity={0.2} />
                             </BarChart>
                         </ChartContainer>
                     </CardContent>
@@ -466,15 +510,23 @@ export function Analytics() {
                             className="mx-auto aspect-square max-h-[300px]"
                         >
                             <RadarChart data={stats.sessionData}>
-                                <ChartTooltip cursor={false} content={<ChartTooltipContent className="glass-card border-primary/20" />} />
-                                <PolarAngleAxis dataKey="name" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10, fontFamily: 'JetBrains Mono' }} />
-                                <PolarGrid stroke="rgba(255,255,255,0.1)" />
+                                <defs>
+                                    <radialGradient id="radarGrad" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                                        <stop offset="0%" stopColor="#a78bfa" stopOpacity={0.4} />
+                                        <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.1} />
+                                    </radialGradient>
+                                </defs>
+                                <ChartTooltip cursor={false} content={<ChartTooltipContent className="glass-card border-primary/20 shadow-2xl" />} />
+                                <PolarAngleAxis dataKey="name" tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 11, fontFamily: 'JetBrains Mono', fontWeight: 600 }} />
+                                <PolarGrid stroke="rgba(255,255,255,0.08)" />
                                 <Radar
                                     dataKey="pnl"
-                                    fill="var(--color-pnl)"
-                                    fillOpacity={0.5}
-                                    stroke="var(--color-pnl)"
-                                    strokeWidth={2}
+                                    fill="url(#radarGrad)"
+                                    fillOpacity={0.6}
+                                    stroke="#a78bfa"
+                                    strokeWidth={3}
+                                    animationDuration={1500}
+                                    dot={{ fill: '#a78bfa', r: 4, strokeWidth: 2, stroke: '#111117' }}
                                 />
                             </RadarChart>
                         </ChartContainer>
@@ -493,13 +545,31 @@ export function Analytics() {
                         <div className="h-[300px]">
                             {stats.strategyData.length > 0 ? (
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={stats.strategyData}>
+                                    <BarChart data={stats.strategyData} margin={{ top: 20 }}>
+                                        <defs>
+                                            <linearGradient id="stratWin" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
+                                                <stop offset="100%" stopColor="#059669" stopOpacity={0.6} />
+                                            </linearGradient>
+                                            <linearGradient id="stratLoss" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
+                                                <stop offset="100%" stopColor="#b91c1c" stopOpacity={0.6} />
+                                            </linearGradient>
+                                        </defs>
                                         <CartesianGrid {...chartTheme.grid} />
-                                        <XAxis dataKey="name" {...chartTheme.axis} />
+                                        <XAxis dataKey="name" {...chartTheme.axis} tick={{ ...chartTheme.axis, fill: 'rgba(255,255,255,0.5)', fontWeight: 600 }} />
                                         <YAxis {...chartTheme.axis} tickFormatter={(v) => `$${v}`} />
-                                        <Tooltip {...chartTheme.tooltip} cursor={{ fill: 'rgba(124,58,237,0.05)' }} />
+                                        <Tooltip {...chartTheme.tooltip} cursor={{ fill: 'rgba(124,58,237,0.03)' }} />
                                         <Bar dataKey="pnl" radius={[6, 6, 0, 0]}>
-                                            {stats.strategyData.map((e, i) => <Cell key={i} fill={e.pnl >= 0 ? '#10b981' : '#ef4444'} fillOpacity={0.8} />)}
+                                            {stats.strategyData.map((e, i) => (
+                                                <Cell
+                                                    key={i}
+                                                    fill={e.pnl >= 0 ? 'url(#stratWin)' : 'url(#stratLoss)'}
+                                                    stroke={e.pnl >= 0 ? "#10b981" : "#ef4444"}
+                                                    strokeWidth={1}
+                                                    strokeOpacity={0.2}
+                                                />
+                                            ))}
                                         </Bar>
                                     </BarChart>
                                 </ResponsiveContainer>
