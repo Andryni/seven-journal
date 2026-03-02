@@ -23,6 +23,13 @@ export const useTradeStore = create<TradeState>()(
             isLoading: false,
 
             fetchTrades: async (accountId) => {
+                // If we already have demo data for this account, don't overwrite it with an empty Supabase response
+                const existingTrades = get().trades;
+                const hasDemoTradesForAccount = existingTrades.some(
+                    t => t.accountId === accountId && t.tags?.includes('Demo')
+                );
+                if (hasDemoTradesForAccount) return;
+
                 set({ isLoading: true });
                 const { data, error } = await supabase
                     .from('trades')
@@ -31,7 +38,9 @@ export const useTradeStore = create<TradeState>()(
                     .order('opened_at', { ascending: false });
 
                 if (data && !error) {
-                    set({ trades: data.map(mapDbTradeToSchema) });
+                    // Merge: keep demo trades for other accounts, replace only this account's real trades
+                    const otherTrades = get().trades.filter(t => t.accountId !== accountId);
+                    set({ trades: [...otherTrades, ...data.map(mapDbTradeToSchema)] });
                 }
                 set({ isLoading: false });
             },
@@ -97,7 +106,12 @@ export const useTradeStore = create<TradeState>()(
             },
 
             loadDemoData: (trades) => {
-                set({ trades });
+                // Merge demo trades: keep non-demo trades, replace/add demo trades for this account
+                const demoAccountId = trades[0]?.accountId;
+                const nonDemoTrades = get().trades.filter(
+                    t => t.accountId !== demoAccountId
+                );
+                set({ trades: [...nonDemoTrades, ...trades] });
             }
         }),
         {

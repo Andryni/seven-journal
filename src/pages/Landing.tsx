@@ -113,46 +113,58 @@ export function LandingPage() {
 
         // 2. If login fails, register the demo user (first time)
         if (error) {
-            await registerUser('DemoTrader', 'demo@example.com', 'demo123456');
+            const { error: regError } = await registerUser('DemoTrader', 'demo@example.com', 'demo123456');
+            if (regError) {
+                console.error('Demo registration failed:', regError);
+                navigate('/signin');
+                return;
+            }
         }
 
         const user = useAuthStore.getState().currentUser;
 
-        if (user) {
-            // 3. Check if demo account exists, if not create it
-            let accounts = useAuthStore.getState().accounts;
-            let demoAcc = accounts.find(a => a.name === 'Demo Account' || a.id === 'demo-account');
-
-            if (!demoAcc) {
-                const { error: accError } = await useAuthStore.getState().addAccount({
-                    userId: user.id,
-                    name: 'Demo Account',
-                    initialCapital: 100000,
-                    currentBalance: 128400,
-                    currency: 'USD',
-                    type: 'Demo',
-                    broker: 'Seven Broker'
-                });
-                if (!accError) {
-                    accounts = useAuthStore.getState().accounts;
-                    demoAcc = accounts.find(a => a.name === 'Demo Account');
-                }
-            }
-
-            if (demoAcc) {
-                await useAuthStore.getState().setActiveAccount(demoAcc.id);
-                // 4. Load demo trades linked to this account
-                const demoTrades = getDemoTrades().map(t => ({ ...t, accountId: demoAcc!.id }));
-                loadDemoData(demoTrades);
-            }
-
-            // Navigate only if we are sure we have a user
-            navigate('/app/dashboard');
-        } else {
-            // Log for debugging
-            console.error('Demo auth failed');
+        if (!user) {
+            console.error('Demo auth failed — no user after login/register');
             navigate('/signin');
+            return;
         }
+
+        // 3. Check if demo account exists, if not create it
+        let accounts = useAuthStore.getState().accounts;
+        let demoAcc = accounts.find(a => a.name === 'Demo Account');
+
+        if (!demoAcc) {
+            const { error: accError } = await useAuthStore.getState().addAccount({
+                userId: user.id,
+                name: 'Demo Account',
+                initialCapital: 100000,
+                currentBalance: 128400,
+                currency: 'USD',
+                type: 'Demo',
+                broker: 'Seven Broker'
+            });
+            if (accError) {
+                console.error('Demo account creation failed:', accError);
+            }
+            accounts = useAuthStore.getState().accounts;
+            demoAcc = accounts.find(a => a.name === 'Demo Account');
+        }
+
+        if (!demoAcc) {
+            console.error('Could not create or find demo account');
+            navigate('/signin');
+            return;
+        }
+
+        // 4. Set active account and WAIT for it to complete
+        await useAuthStore.getState().setActiveAccount(demoAcc.id);
+
+        // 5. Load demo trades linked to this account (merge into store, don't clear real trades)
+        const demoTrades = getDemoTrades().map(t => ({ ...t, accountId: demoAcc!.id }));
+        loadDemoData(demoTrades);
+
+        // 6. Navigate after everything is set
+        navigate('/app/dashboard');
     };
 
     const features = FEATURES(t);
