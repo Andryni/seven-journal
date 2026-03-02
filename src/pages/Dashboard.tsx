@@ -210,8 +210,8 @@ export function Dashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* Equity Curve */}
-                <div className="lg:col-span-2 glass-card p-6 h-[420px] flex flex-col candle-bg">
-                    <div className="flex justify-between items-center mb-6 relative z-10">
+                <div className="lg:col-span-2 glass-card p-6 flex flex-col candle-bg">
+                    <div className="flex justify-between items-center mb-4 relative z-10">
                         <div>
                             <p className="section-label mb-1">{t.dashboard.equityCurve}</p>
                             <h3 className="text-xl font-bold text-white">Performance History</h3>
@@ -220,7 +220,7 @@ export function Dashboard() {
                             {period === 'all' ? 'All Time' : period === 'custom' ? 'Custom' : period.charAt(0).toUpperCase() + period.slice(1)}
                         </span>
                     </div>
-                    <div className="flex-1 min-h-0 relative z-10">
+                    <div className="h-[280px] relative z-10">
                         {chartData.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={chartData}>
@@ -245,6 +245,44 @@ export function Dashboard() {
                             <EmptyState message={closedTrades.length === 0 ? "Log some closed trades to see your equity curve." : "No trades in this period."} />
                         )}
                     </div>
+
+                    {/* ── Mini stats strip below the chart ── */}
+                    {closedTrades.length > 0 && (() => {
+                        const pnls = closedTrades.map(t => t.netPnl || 0);
+                        const bestTrade = Math.max(...pnls);
+                        const worstTrade = Math.min(...pnls);
+                        const avgTrade = pnls.reduce((a, b) => a + b, 0) / pnls.length;
+                        const winsCount = pnls.filter(p => p > 0).length;
+                        const winStreak = (() => {
+                            let max = 0, cur = 0;
+                            [...closedTrades].sort((a, b) => new Date(a.openedAt).getTime() - new Date(b.openedAt).getTime())
+                                .forEach(t => { if ((t.netPnl || 0) > 0) { cur++; if (cur > max) max = cur; } else cur = 0; });
+                            return max;
+                        })();
+
+                        const miniStats = [
+                            { label: 'Best Trade', value: `+$${bestTrade.toFixed(0)}`, color: '#10b981' },
+                            { label: 'Worst Trade', value: `-$${Math.abs(worstTrade).toFixed(0)}`, color: '#ef4444' },
+                            { label: 'Avg Trade', value: `${avgTrade >= 0 ? '+' : ''}$${avgTrade.toFixed(0)}`, color: avgTrade >= 0 ? '#10b981' : '#ef4444' },
+                            { label: 'Trades', value: closedTrades.length.toString(), color: '#a78bfa' },
+                            { label: 'Win Streak', value: `${winStreak}`, color: '#06b6d4' },
+                            { label: 'Win Rate', value: `${closedTrades.length > 0 ? ((winsCount / closedTrades.length) * 100).toFixed(0) : 0}%`, color: '#f59e0b' },
+                        ];
+
+                        return (
+                            <div className="mt-4 pt-4 relative z-10" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                                    {miniStats.map(({ label, value, color }) => (
+                                        <div key={label} className="flex flex-col items-center gap-0.5 px-2 py-2.5 rounded-xl transition-all duration-200 hover:scale-105"
+                                            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                            <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>{label}</span>
+                                            <span className="text-sm font-black font-mono" style={{ color }}>{value}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
 
                 {/* Recent Trades */}
