@@ -105,10 +105,40 @@ export function LandingPage() {
     const registerUser = useAuthStore(state => state.register);
     const heroRef = useRef<HTMLDivElement>(null);
 
-    const handleDemo = () => {
-        registerUser('DemoTrader', 'demo@example.com', 'demo123456');
-        useAuthStore.getState().updateUser({ activeAccountId: 'demo-account' });
-        loadDemoData(getDemoTrades());
+    const handleDemo = async () => {
+        // 1. Register/Login demo user
+        await registerUser('DemoTrader', 'demo@example.com', 'demo123456');
+        const user = useAuthStore.getState().currentUser;
+
+        if (user) {
+            // 2. Check if demo account exists, if not create it
+            let accounts = useAuthStore.getState().accounts;
+            let demoAcc = accounts.find(a => a.name === 'Demo Account' || a.id === 'demo-account');
+
+            if (!demoAcc) {
+                const { error } = await useAuthStore.getState().addAccount({
+                    userId: user.id,
+                    name: 'Demo Account',
+                    initialCapital: 100000,
+                    currentBalance: 128400,
+                    currency: 'USD',
+                    type: 'Demo',
+                    broker: 'Seven Broker'
+                });
+                if (!error) {
+                    accounts = useAuthStore.getState().accounts;
+                    demoAcc = accounts.find(a => a.name === 'Demo Account');
+                }
+            }
+
+            if (demoAcc) {
+                await useAuthStore.getState().setActiveAccount(demoAcc.id);
+                // 3. Load demo trades linked to this account
+                const demoTrades = getDemoTrades().map(t => ({ ...t, accountId: demoAcc!.id }));
+                loadDemoData(demoTrades);
+            }
+        }
+
         navigate('/app/dashboard');
     };
 
