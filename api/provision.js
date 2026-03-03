@@ -1,5 +1,7 @@
 // Provision a MT5 account via MetaApi REST API (no heavy SDK)
 export default async function handler(req, res) {
+    console.log('--- MT5 Provisioning Started ---');
+
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
@@ -8,20 +10,29 @@ export default async function handler(req, res) {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const metaToken = process.env.METAAPI_TOKEN;
 
-    if (!supabaseUrl || !supabaseKey || !metaToken) {
+    // Fast check for environment variables
+    const missing = [];
+    if (!supabaseUrl) missing.push('SUPABASE_URL');
+    if (!supabaseKey) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+    if (!metaToken) missing.push('METAAPI_TOKEN');
+
+    if (missing.length > 0) {
+        console.error('Missing environment variables:', missing.join(', '));
         return res.status(500).json({
-            error: `Missing config: SUPABASE_URL=${!!supabaseUrl}, SERVICE_KEY=${!!supabaseKey}, METAAPI_TOKEN=${!!metaToken}`
+            error: `Missing configuration on Vercel: ${missing.join(', ')}. Please add them in Vercel Project Settings > Environment Variables.`
         });
     }
 
     const { accountId, login, password, server, platform = 'mt5' } = req.body || {};
+    console.log(`Provisioning for accountId: ${accountId}, Login: ${login}, Server: ${server}`);
 
-    if (!login || !password || !server) {
-        return res.status(400).json({ error: 'Missing MT5 credentials (login, password, server)' });
+    if (!accountId || !login || !password || !server) {
+        return res.status(400).json({ error: 'Missing required fields: accountId, login, password, or server' });
     }
 
     try {
         // --- 1. Create account via MetaApi REST API ---
+        console.log('Calling MetaApi REST...');
         const metaRes = await fetch('https://mt-provisioning-api-v1.agiliumtrade.agiliumtrade.ai/users/current/accounts', {
             method: 'POST',
             headers: {
@@ -42,15 +53,18 @@ export default async function handler(req, res) {
 
         if (!metaRes.ok) {
             const errorBody = await metaRes.text();
-            console.error('MetaApi Error:', metaRes.status, errorBody);
-            return res.status(500).json({ error: `MetaApi Error (${metaRes.status}): ${errorBody}` });
+            console.error('MetaApi Error Response:', metaRes.status, errorBody);
+            let parsedError;
+            try { parsedError = JSON.parse(errorBody).message; } catch (e) { parsedError = errorBody; }
+            return res.status(500).json({ error: `MetaApi Error: ${parsedError}` });
         }
 
         const metaData = await metaRes.json();
         const metaApiAccountId = metaData.id;
-        console.log('MetaApi account created:', metaApiAccountId);
+        console.log('MetaApi account created successfully ID:', metaApiAccountId);
 
         // --- 2. Update Supabase with metaapi_account_id ---
+        console.log('Updating Supabase account:', accountId);
         const supaRes = await fetch(`${supabaseUrl}/rest/v1/trading_accounts?id=eq.${accountId}`, {
             method: 'PATCH',
             headers: {
@@ -64,15 +78,15 @@ export default async function handler(req, res) {
 
         if (!supaRes.ok) {
             const supaError = await supaRes.text();
-            console.error('Supabase Error:', supaRes.status, supaError);
-            return res.status(500).json({ error: `Supabase Error (${supaRes.status}): ${supaError}` });
+            console.error('Supabase Update Error:', supaRes.status, supaError);
+            return res.status(500).json({ error: `Failed to link account in database: ${supaError}` });
         }
 
-        console.log('Supabase updated successfully');
+        console.log('Provisioning completed successfully');
         return res.status(200).json({ success: true, metaApiAccountId });
 
     } catch (err) {
-        console.error('Provision failed:', err);
-        return res.status(500).json({ error: err.message });
+        console.error('Unexpected Provisioning Error:', err);
+        return res.status(500).json({ error: `Server error: ${err.message}` });
     }
 }

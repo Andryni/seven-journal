@@ -8,6 +8,7 @@ export function MetaApiForm({ accountId, onConnected }: { accountId?: string, on
     const [server, setServer] = useState('');
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+    const [step, setStep] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
 
     // Fields for creating a new account if no accountId given
@@ -23,12 +24,16 @@ export function MetaApiForm({ accountId, onConnected }: { accountId?: string, on
         setLoading(true);
         setStatus('idle');
         setErrorMsg('');
+        setStep('Initiating connection...');
+        console.log('Starting MT5 connection process...');
 
         try {
             // If no accountId provided, create one first
             let targetAccountId = accountId;
 
             if (!targetAccountId) {
+                setStep('Creating trading account...');
+                console.log('Creating new account in Supabase:', accountName);
                 if (!accountName || !initialCapital) {
                     throw new Error('Please enter an account name and initial capital.');
                 }
@@ -46,44 +51,69 @@ export function MetaApiForm({ accountId, onConnected }: { accountId?: string, on
                 // Get the newly created account
                 const freshAccounts = useAuthStore.getState().accounts;
                 const newAcc = freshAccounts[freshAccounts.length - 1];
-                if (!newAcc) throw new Error('Account creation failed');
+                if (!newAcc) throw new Error('Account creation failed (could not retrieve new account)');
                 targetAccountId = newAcc.id;
+
+                setStep('Setting active account...');
                 await setActiveAccount(newAcc.id);
+                console.log('Account created and set as active:', targetAccountId);
             }
 
             // Now provision MetaApi
-            const response = await fetch('/api/provision', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: currentUser?.id,
-                    accountId: targetAccountId,
-                    login,
-                    password,
-                    server,
-                    platform: 'mt5'
-                })
-            });
+            setStep('Provisioning MetaApi (this may take up to 60s)...');
+            console.log('Calling /api/provision for account:', targetAccountId);
 
-            const data = await response.text().then(text => {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
+            try {
+                const response = await fetch('/api/provision', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    signal: controller.signal,
+                    body: JSON.stringify({
+                        userId: currentUser?.id,
+                        accountId: targetAccountId,
+                        login,
+                        password,
+                        server,
+                        platform: 'mt5'
+                    })
+                });
+
+                clearTimeout(timeoutId);
+                console.log('Provision API response status:', response.status);
+
+                const text = await response.text();
+                let data;
                 try {
-                    return JSON.parse(text);
+                    data = JSON.parse(text);
                 } catch {
-                    throw new Error(`Server returned ${response.status}. The API service might be starting up or failing.`);
+                    console.error('Failed to parse API response:', text);
+                    throw new Error(`Server returned status ${response.status}. The API service might be starting up or failing. Check the server console.`);
                 }
-            });
 
-            if (data.success) {
-                setStatus('success');
-                if (onConnected) onConnected();
-            } else {
-                throw new Error(data.error || 'Connection failed');
+                if (data.success) {
+                    console.log('Provisioning successful!');
+                    setStatus('success');
+                    if (onConnected) onConnected();
+                } else {
+                    console.error('Provisioning failed:', data.error);
+                    throw new Error(data.error || 'Connection failed');
+                }
+            } catch (fetchErr: any) {
+                if (fetchErr.name === 'AbortError') {
+                    throw new Error('Connection timed out. MetaApi is taking too long to respond. Please try again in a few minutes.');
+                }
+                throw fetchErr;
             }
         } catch (err: any) {
+            console.error('MT5 Connection Error:', err);
             setStatus('error');
             setErrorMsg(err.message);
         } finally {
             setLoading(false);
+            setStep('');
         }
     };
 
@@ -158,12 +188,15 @@ export function MetaApiForm({ accountId, onConnected }: { accountId?: string, on
                 </div>
             )}
 
-            <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-xs justify-center">
+            <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-xs justify-center relative overflow-hidden">
                 {loading ? (
-                    <span className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-                        Connecting...
-                    </span>
+                    <div className="flex flex-col items-center py-1">
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="w-3 h-3 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+                            <span>Connecting...</span>
+                        </div>
+                        <span className="text-[9px] opacity-70 font-normal">{step}</span>
+                    </div>
                 ) : (
                     <>Establish Connection <Shield size={14} /></>
                 )}
