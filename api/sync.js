@@ -1,7 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import MetaApiPkg from 'metaapi.cloud-sdk';
-
-const MetaApi = MetaApiPkg.default || MetaApiPkg;
+import MetaApi from 'metaapi.cloud-sdk';
 
 export default async function handler(req, res) {
     try {
