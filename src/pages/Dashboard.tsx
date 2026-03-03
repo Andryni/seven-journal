@@ -102,6 +102,11 @@ export function Dashboard() {
     const allTrades = useTradeStore(state => state.trades);
     const { t } = useTranslation();
 
+    useEffect(() => {
+        // Trigger background sync when dashboard opens
+        fetch('/api/sync').catch(err => console.error('Sync failed', err));
+    }, []);
+
     const [period, setPeriod] = useState<Period>('all');
     const [customFrom, setCustomFrom] = useState('');
     const [customTo, setCustomTo] = useState('');
