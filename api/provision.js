@@ -43,7 +43,7 @@ export default async function handler(req, res) {
 
         const metaResponse = await new Promise((resolve, reject) => {
             const options = {
-                hostname: 'mt-provisioning-api-v1.agiliumtrade.ai',
+                hostname: 'mt-provisioning-api-v1.agiliumtrade.agiliumtrade.ai',
                 path: '/users/current/accounts',
                 method: 'POST',
                 headers: {
