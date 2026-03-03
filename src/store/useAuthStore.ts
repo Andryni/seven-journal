@@ -215,24 +215,20 @@ export const useAuthStore = create<AuthState>()(
 
             addAccount: async (accountData) => {
                 const user = get().currentUser;
+                // Get config from environment
+                const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+                const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
                 if (!user) return { error: { message: 'No user authenticated' } };
 
                 try {
-                    console.log('--- MT5 Account Insertion Process ---');
+                    console.log('--- MT5 Account Insertion (DIRECT FETCH) ---');
 
-                    // 1. Ensure profile exists first (to satisfy Foreign Key constraints)
-                    // We check both username and email to be safe
-                    const { data: profileCheck } = await supabase.from('profiles').select('id').eq('id', user.id).single();
-                    if (!profileCheck) {
-                        console.log('Profile missing from DB, creating it now...');
-                        await supabase.from('profiles').insert({
-                            id: user.id,
-                            email: user.email,
-                            username: user.username || user.email.split('@')[0]
-                        });
-                    }
+                    // Get session token to be sure we are authorized
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (!session) throw new Error('No active Supabase session found. Please logout and login again.');
 
-                    console.log('Inserting into trading_accounts payload:', {
+                    const payload = {
                         user_id: user.id,
                         name: accountData.name,
                         initial_capital: accountData.initialCapital,
@@ -240,29 +236,34 @@ export const useAuthStore = create<AuthState>()(
                         currency: accountData.currency || 'USD',
                         type: accountData.type,
                         broker: accountData.broker
+                    };
+
+                    console.log('Target URL:', `${supabaseUrl}/rest/v1/trading_accounts`);
+
+                    const response = await fetch(`${supabaseUrl}/rest/v1/trading_accounts`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': supabaseAnonKey,
+                            'Authorization': `Bearer ${session.access_token}`,
+                            'Prefer': 'return=representation'
+                        },
+                        body: JSON.stringify(payload)
                     });
 
-                    const { data, error } = await supabase
-                        .from('trading_accounts')
-                        .insert({
-                            user_id: user.id,
-                            name: accountData.name,
-                            initial_capital: accountData.initialCapital,
-                            current_balance: accountData.currentBalance,
-                            currency: accountData.currency || 'USD',
-                            type: accountData.type,
-                            broker: accountData.broker
-                        })
-                        .select();
+                    console.log('Fetch status:', response.status);
 
-                    if (error) {
-                        console.error('Supabase insert error details:', error);
-                        return { error };
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('Database Direct Error:', errorText);
+                        throw new Error(`Database Error (${response.status}): ${errorText}`);
                     }
 
+                    const data = await response.json();
                     const newRow = data?.[0];
+
                     if (newRow) {
-                        console.log('Account created successfully in DB:', newRow.id);
+                        console.log('Account created successfully via Fetch:', newRow.id);
                         const newAcc: TradingAccount = {
                             id: newRow.id,
                             userId: newRow.user_id,
@@ -282,7 +283,7 @@ export const useAuthStore = create<AuthState>()(
                         return { error: null };
                     }
 
-                    return { error: { message: 'Database operation completed but no data returned' } };
+                    return { error: { message: 'Account created but server returned no data' } };
                 } catch (err: any) {
                     console.error('Unexpected error in addAccount:', err);
                     return { error: { message: err.message || 'Unknown database error' } };
