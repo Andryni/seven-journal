@@ -17,7 +17,6 @@ export function MetaApiForm({ accountId, onConnected }: { accountId?: string, on
     const currentUser = useAuthStore(state => state.currentUser);
     const addAccount = useAuthStore(state => state.addAccount);
     const setActiveAccount = useAuthStore(state => state.setActiveAccount);
-    const accounts = useAuthStore(state => state.accounts);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
