@@ -231,16 +231,6 @@ export function Settings() {
                         </div>
 
                         <div className="space-y-6">
-                            {/* MT5 Auto-Sync: shown if no accounts OR active account has no MetaApi */}
-                            {(accounts.length === 0 || (currentUser?.activeAccountId && !accounts.find(a => a.id === currentUser.activeAccountId)?.metaapiAccountId)) && (
-                                <div>
-                                    <p className="section-label mb-4">⚡ MT5 Auto-Sync</p>
-                                    <div className="rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(139,92,246,0.2)' }}>
-                                        <MetaApiForm />
-                                    </div>
-                                </div>
-                            )}
-
                             <div>
                                 <p className="section-label mb-4">{t.settings.createAccount}</p>
                                 <div className="rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>

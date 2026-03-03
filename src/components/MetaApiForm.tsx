@@ -95,6 +95,11 @@ export function MetaApiForm({ accountId, onConnected }: { accountId?: string, on
 
                 if (data.success) {
                     console.log('Provisioning successful!');
+                    // Refresh local accounts state to show "Sync Active"
+                    if (currentUser) {
+                        await useAuthStore.getState().fetchAccounts(currentUser.id);
+                        await useAuthStore.getState().fetchProfile(currentUser.id);
+                    }
                     setStatus('success');
                     if (onConnected) onConnected();
                 } else {

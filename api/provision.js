@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     try {
         // --- 1. Create account via MetaApi REST API ---
         console.log('Calling MetaApi REST...');
-        const metaRes = await fetch('https://mt-provisioning-api-v1.agiliumtrade.agiliumtrade.ai/users/current/accounts', {
+        const metaRes = await fetch('https://mt-provisioning-api-v1.agiliumtrade.ai/users/current/accounts', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
