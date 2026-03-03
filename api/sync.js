@@ -1,8 +1,8 @@
 // Sync trades via MetaApi REST API (no heavy SDK)
 export default async function handler(req, res) {
-    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const metaToken = process.env.METAAPI_TOKEN;
+    const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim();
+    const supabaseKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+    const metaToken = (process.env.METAAPI_TOKEN || '').trim();
 
     if (!supabaseUrl || !supabaseKey || !metaToken) {
         return res.status(500).json({

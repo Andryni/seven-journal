@@ -6,9 +6,9 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const metaToken = process.env.METAAPI_TOKEN;
+    const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim();
+    const supabaseKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+    const metaToken = (process.env.METAAPI_TOKEN || '').trim();
 
     // Fast check for environment variables
     const missing = [];
@@ -31,6 +31,15 @@ export default async function handler(req, res) {
     }
 
     try {
+        // --- 0. Reachability Check ---
+        console.log('[PROVISION] Step 0: Connectivity probe...');
+        try {
+            await fetch('https://www.google.com', { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+            console.log('[PROVISION] Google reached successfully');
+        } catch (e) {
+            console.warn('[PROVISION] Connectivity Warning: google.com reached failed:', e.message);
+        }
+
         // --- 1. Create account via MetaApi REST API ---
         console.log('[PROVISION] Step 1: Calling MetaApi Provisioning...');
 
@@ -46,7 +55,7 @@ export default async function handler(req, res) {
                 headers: {
                     'Content-Type': 'application/json',
                     'auth-token': metaToken,
-                    'User-Agent': 'SevenJournal/1.0' // Some APIs block anonymous fetch requests
+                    'User-Agent': 'Mozilla/5.0 (Vercel; Node.js)'
                 },
                 body: JSON.stringify({
                     name: `SevenJournal-${accountId}`,
@@ -61,7 +70,7 @@ export default async function handler(req, res) {
             });
         } catch (fetchErr) {
             console.error('[PROVISION] NETWORK ERROR:', fetchErr);
-            throw new Error(`Technical network failure: ${fetchErr.message}. MetaApi might be blocking the request or the URL is unreachable from Vercel.`);
+            throw new Error(`Technical network failure: ${fetchErr.message}. Ensure your METAAPI_TOKEN variable in Vercel settings has no extra spaces or hidden characters.`);
         }
 
         if (!metaRes.ok) {
