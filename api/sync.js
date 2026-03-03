@@ -29,7 +29,7 @@ export default async function handler(req, res) {
             try {
                 // 1. Fetch History
                 const historyData = await callMetaApi(
-                    'mt-client-api-v1.london.agiliumtrade.ai',
+                    'mt-client-api-v1.agiliumtrade.agiliumtrade.ai',
                     `/users/current/accounts/${acc.metaapi_account_id}/history-deals/time/${fromDate}/${toDate}`,
                     metaToken
                 );
@@ -89,7 +89,7 @@ export default async function handler(req, res) {
 
                 // 2. Fetch Open Positions
                 const openData = await callMetaApi(
-                    'mt-client-api-v1.london.agiliumtrade.ai',
+                    'mt-client-api-v1.agiliumtrade.agiliumtrade.ai',
                     `/users/current/accounts/${acc.metaapi_account_id}/positions`,
                     metaToken
                 );
