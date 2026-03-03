@@ -102,10 +102,15 @@ export function Dashboard() {
     const allTrades = useTradeStore(state => state.trades);
     const { t } = useTranslation();
 
+    const fetchTrades = useTradeStore(state => state.fetchTrades);
+
     useEffect(() => {
-        // Trigger background sync when dashboard opens
-        fetch('/api/sync').catch(err => console.error('Sync failed', err));
-    }, []);
+        if (!activeAccountId) return;
+        // Trigger sync then reload trades from Supabase
+        fetch('/api/sync')
+            .then(() => fetchTrades(activeAccountId))
+            .catch(err => console.error('Sync failed', err));
+    }, [activeAccountId]);
 
     const [period, setPeriod] = useState<Period>('all');
     const [customFrom, setCustomFrom] = useState('');

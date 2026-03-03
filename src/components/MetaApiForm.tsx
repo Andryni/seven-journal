@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Shield, Zap, CheckCircle, AlertCircle } from 'lucide-react';
+import { Shield, Zap, CheckCircle, AlertCircle, Plus } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 
-export function MetaApiForm({ accountId, onConnected }: { accountId: string, onConnected?: () => void }) {
+export function MetaApiForm({ accountId, onConnected }: { accountId?: string, onConnected?: () => void }) {
     const [login, setLogin] = useState('');
     const [password, setPassword] = useState('');
     const [server, setServer] = useState('');
@@ -10,7 +10,14 @@ export function MetaApiForm({ accountId, onConnected }: { accountId: string, onC
     const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [errorMsg, setErrorMsg] = useState('');
 
+    // Fields for creating a new account if no accountId given
+    const [accountName, setAccountName] = useState('');
+    const [initialCapital, setInitialCapital] = useState('');
+
     const currentUser = useAuthStore(state => state.currentUser);
+    const addAccount = useAuthStore(state => state.addAccount);
+    const setActiveAccount = useAuthStore(state => state.setActiveAccount);
+    const accounts = useAuthStore(state => state.accounts);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -19,12 +26,39 @@ export function MetaApiForm({ accountId, onConnected }: { accountId: string, onC
         setErrorMsg('');
 
         try {
+            // If no accountId provided, create one first
+            let targetAccountId = accountId;
+
+            if (!targetAccountId) {
+                if (!accountName || !initialCapital) {
+                    throw new Error('Please enter an account name and initial capital.');
+                }
+                const { error: accError } = await addAccount({
+                    userId: currentUser!.id,
+                    name: accountName,
+                    initialCapital: parseFloat(initialCapital),
+                    currentBalance: parseFloat(initialCapital),
+                    currency: 'USD',
+                    type: 'Propfirm',
+                    broker: server
+                });
+                if (accError) throw new Error(`Failed to create account: ${accError.message}`);
+
+                // Get the newly created account
+                const freshAccounts = useAuthStore.getState().accounts;
+                const newAcc = freshAccounts[freshAccounts.length - 1];
+                if (!newAcc) throw new Error('Account creation failed');
+                targetAccountId = newAcc.id;
+                await setActiveAccount(newAcc.id);
+            }
+
+            // Now provision MetaApi
             const response = await fetch('/api/provision', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: currentUser?.id,
-                    accountId,
+                    accountId: targetAccountId,
                     login,
                     password,
                     server,
@@ -61,10 +95,12 @@ export function MetaApiForm({ accountId, onConnected }: { accountId: string, onC
                     <CheckCircle className="text-profit" size={24} />
                 </div>
                 <h3 className="font-bold text-white">Account Connected!</h3>
-                <p className="text-xs text-text-secondary">Your trades will now be synced automatically.</p>
+                <p className="text-xs text-text-secondary">Your trades will now be synced automatically when you open the Dashboard.</p>
             </div>
         );
     }
+
+    const needsAccountCreation = !accountId;
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -79,6 +115,25 @@ export function MetaApiForm({ accountId, onConnected }: { accountId: string, onC
             </p>
 
             <div className="space-y-3">
+                {/* If no accountId, show account creation fields */}
+                {needsAccountCreation && (
+                    <div className="p-3 rounded-xl space-y-3" style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-primary-light flex items-center gap-1">
+                            <Plus size={10} /> New Account Details
+                        </p>
+                        <div>
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1 block">Account Name</label>
+                            <input value={accountName} onChange={e => setAccountName(e.target.value)} required={needsAccountCreation}
+                                className="input-field text-sm" placeholder="e.g. FundedNext 6k" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1 block">Initial Capital ($)</label>
+                            <input type="number" value={initialCapital} onChange={e => setInitialCapital(e.target.value)} required={needsAccountCreation}
+                                className="input-field text-sm" placeholder="e.g. 6000" />
+                        </div>
+                    </div>
+                )}
+
                 <div>
                     <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1 block">MT5 Login</label>
                     <input required value={login} onChange={e => setLogin(e.target.value)}
@@ -92,15 +147,15 @@ export function MetaApiForm({ accountId, onConnected }: { accountId: string, onC
                 <div>
                     <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1 block">Broker Server</label>
                     <input required value={server} onChange={e => setServer(e.target.value)}
-                        className="input-field text-sm" placeholder="e.g. ICDeals-Demo" />
+                        className="input-field text-sm" placeholder="e.g. FundedNext-Server3" />
                 </div>
             </div>
 
             {status === 'error' && (
-                <div className="flex items-center gap-2 p-3 rounded-xl text-xs font-medium"
+                <div className="flex items-start gap-2 p-3 rounded-xl text-xs font-medium"
                     style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
-                    <AlertCircle size={14} />
-                    {errorMsg}
+                    <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                    <span>{errorMsg}</span>
                 </div>
             )}
 
