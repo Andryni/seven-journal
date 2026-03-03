@@ -215,18 +215,32 @@ export const useAuthStore = create<AuthState>()(
 
             addAccount: async (accountData) => {
                 const user = get().currentUser;
-                console.log('addAccount called for user:', user?.id);
                 if (!user) return { error: { message: 'No user authenticated' } };
 
                 try {
-                    const { data: { session } } = await supabase.auth.getSession();
-                    console.log('Current session check before insert:', session?.user?.id);
+                    console.log('--- MT5 Account Insertion Process ---');
 
-                    if (session?.user?.id !== user.id) {
-                        console.error('ID MISMATCH: Store has', user.id, 'but Auth Session has', session?.user?.id);
+                    // 1. Ensure profile exists first (to satisfy Foreign Key constraints)
+                    // We check both username and email to be safe
+                    const { data: profileCheck } = await supabase.from('profiles').select('id').eq('id', user.id).single();
+                    if (!profileCheck) {
+                        console.log('Profile missing from DB, creating it now...');
+                        await supabase.from('profiles').insert({
+                            id: user.id,
+                            email: user.email,
+                            username: user.username || user.email.split('@')[0]
+                        });
                     }
 
-                    console.log('Inserting into trading_accounts (NO TIMEOUT)...', accountData);
+                    console.log('Inserting into trading_accounts payload:', {
+                        user_id: user.id,
+                        name: accountData.name,
+                        initial_capital: accountData.initialCapital,
+                        current_balance: accountData.currentBalance,
+                        currency: accountData.currency || 'USD',
+                        type: accountData.type,
+                        broker: accountData.broker
+                    });
 
                     const { data, error } = await supabase
                         .from('trading_accounts')
@@ -235,41 +249,40 @@ export const useAuthStore = create<AuthState>()(
                             name: accountData.name,
                             initial_capital: accountData.initialCapital,
                             current_balance: accountData.currentBalance,
-                            currency: accountData.currency,
+                            currency: accountData.currency || 'USD',
                             type: accountData.type,
                             broker: accountData.broker
                         })
-                        .select()
-                        .single();
+                        .select();
 
                     if (error) {
-                        console.error('Supabase raw error:', JSON.stringify(error, null, 2));
+                        console.error('Supabase insert error details:', error);
                         return { error };
                     }
 
-                    if (data) {
-                        console.log('Account created successfully:', data.id);
+                    const newRow = data?.[0];
+                    if (newRow) {
+                        console.log('Account created successfully in DB:', newRow.id);
                         const newAcc: TradingAccount = {
-                            id: data.id,
-                            userId: data.user_id,
-                            name: data.name,
-                            initialCapital: parseFloat(data.initial_capital),
-                            currentBalance: parseFloat(data.current_balance),
-                            currency: data.currency,
-                            type: data.type,
-                            broker: data.broker,
-                            metaapiAccountId: data.metaapi_account_id,
-                            createdAt: data.created_at
+                            id: newRow.id,
+                            userId: newRow.user_id,
+                            name: newRow.name,
+                            initialCapital: parseFloat(newRow.initial_capital),
+                            currentBalance: parseFloat(newRow.current_balance),
+                            currency: newRow.currency,
+                            type: newRow.type,
+                            broker: newRow.broker,
+                            metaapiAccountId: newRow.metaapi_account_id,
+                            createdAt: newRow.created_at
                         };
                         set(state => ({ accounts: [...state.accounts, newAcc] }));
                         if (!user.activeAccountId) {
-                            console.log('Propagating active account...');
-                            await get().setActiveAccount(newAcc.id);
+                            await get().setActiveAccount(newRow.id);
                         }
                         return { error: null };
                     }
 
-                    return { error: { message: 'No data returned from database' } };
+                    return { error: { message: 'Database operation completed but no data returned' } };
                 } catch (err: any) {
                     console.error('Unexpected error in addAccount:', err);
                     return { error: { message: err.message || 'Unknown database error' } };
