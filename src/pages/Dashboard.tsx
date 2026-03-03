@@ -103,13 +103,28 @@ export function Dashboard() {
     const { t } = useTranslation();
 
     const fetchTrades = useTradeStore(state => state.fetchTrades);
+    const [isSyncing, setIsSyncing] = useState(false);
+
+    const triggerSync = async () => {
+        if (!activeAccountId || isSyncing) return;
+        setIsSyncing(true);
+        console.log('[DASHBOARD] Starting manual sync...');
+        try {
+            const res = await fetch('/api/sync');
+            const data = await res.json();
+            console.log('[DASHBOARD] Sync Report:', data);
+            await fetchTrades(activeAccountId);
+        } catch (err) {
+            console.error('[DASHBOARD] Sync failed', err);
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     useEffect(() => {
-        if (!activeAccountId) return;
-        // Trigger sync then reload trades from Supabase
-        fetch('/api/sync')
-            .then(() => fetchTrades(activeAccountId))
-            .catch(err => console.error('Sync failed', err));
+        if (activeAccountId) {
+            triggerSync();
+        }
     }, [activeAccountId]);
 
     const [period, setPeriod] = useState<Period>('all');
@@ -175,7 +190,16 @@ export function Dashboard() {
                     <p className="text-xs md:text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>{t.dashboard.sessionReady}</p>
                 </div>
 
-                <div className="relative z-10 flex flex-row md:flex-row items-center justify-between md:justify-end gap-4 md:gap-6 w-full md:w-auto mt-2 md:mt-0">
+                <div className="relative z-10 flex flex-row md:flex-row items-center justify-between md:justify-end gap-3 md:gap-5 w-full md:w-auto mt-2 md:mt-0">
+                    <button
+                        onClick={() => triggerSync()}
+                        disabled={isSyncing}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${isSyncing ? 'opacity-50 cursor-wait' : 'hover:scale-105'}`}
+                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}
+                    >
+                        <Activity size={14} className={isSyncing ? 'animate-spin text-accent-cyan' : ''} />
+                        {isSyncing ? 'Syncing...' : 'Sync Now'}
+                    </button>
                     <div className="flex flex-col items-start md:items-end">
                         <span className="section-label mb-1">Net P&L</span>
                         <span className={`text-2xl md:text-3xl font-mono font-black ${isProfit ? 'profit-glow' : 'loss-glow'}`}>

@@ -1,7 +1,7 @@
 import https from 'https';
 
 /**
- * Advanced Sync: Optimized for MT5 with detailed logging and upsert fixes.
+ * Super-Verbose Sync: History + Open Positions with detailed reporting.
  */
 export default async function handler(req, res) {
     const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim();
@@ -9,11 +9,11 @@ export default async function handler(req, res) {
     const metaToken = (process.env.METAAPI_TOKEN || '').trim();
 
     if (!supabaseUrl || !supabaseKey || !metaToken) {
-        return res.status(500).json({ error: 'System configuration incomplete.' });
+        return res.status(500).json({ error: 'System configuration incomplete on Vercel.' });
     }
 
     try {
-        console.log('[SYNC] Starting global synchronization...');
+        console.log('[SYNC] Starting Global Refresh...');
 
         // 1. Fetch accounts to sync from Supabase
         const accountsRes = await fetch(`${supabaseUrl}/rest/v1/trading_accounts?metaapi_account_id=not.is.null&select=id,user_id,metaapi_account_id`, {
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
         const accounts = await accountsRes.json();
 
         if (!accounts || accounts.length === 0) {
-            return res.status(200).json({ message: 'No accounts linked to MetaApi found.' });
+            return res.status(200).json({ success: true, message: 'No accounts to sync.' });
         }
 
         const report = [];
@@ -30,66 +30,103 @@ export default async function handler(req, res) {
         const toDate = new Date().toISOString();
 
         for (const acc of accounts) {
-            console.log(`[SYNC] Processing Account: ${acc.id} (MetaID: ${acc.metaapi_account_id})`);
+            const accReport = { accountId: acc.id, dealsFound: 0, syncStatus: 'idle', saved: 0, errors: [] };
 
             try {
-                // 2. Fetch History Deals via Native HTTPS (Reliable)
-                // Try the standard endpoint first
+                // 2. Fetch History Deals (Using LONDON region for reliability)
                 const historyData = await callMetaApi(
-                    'mt-client-api-v1.agiliumtrade.agiliumtrade.ai',
+                    'mt-client-api-v1.london.agiliumtrade.ai',
                     `/users/current/accounts/${acc.metaapi_account_id}/history-deals/time/${fromDate}/${toDate}`,
                     metaToken
                 );
 
-                if (!historyData || historyData.error) {
-                    console.error(`[SYNC] MetaApi Error for ${acc.id}:`, historyData?.error);
-                    report.push({ accountId: acc.id, status: 'error', detail: 'Could not fetch history' });
-                    continue;
+                if (historyData?.error) {
+                    accReport.syncStatus = 'error';
+                    accReport.errors.push(`MetaApi Error: ${historyData.error}`);
+                } else {
+                    accReport.dealsFound = historyData.length || 0;
+
+                    // Grouping logic...
+                    const positions = {};
+                    historyData.forEach(deal => {
+                        if (!deal.positionId) return;
+                        if (!positions[deal.positionId]) {
+                            positions[deal.positionId] = { deals: [], profit: 0, commission: 0, swap: 0 };
+                        }
+                        positions[deal.positionId].deals.push(deal);
+                        positions[deal.positionId].profit += (deal.profit || 0);
+                        positions[deal.positionId].commission += (deal.commission || 0);
+                        positions[deal.positionId].swap += (deal.swap || 0);
+                    });
+
+                    for (const posId in positions) {
+                        const pos = positions[posId];
+                        const exitDeal = pos.deals.find(d => d.entryType === 'DEAL_ENTRY_OUT' || d.entryType === 'DEAL_ENTRY_OUT_BY');
+                        const entryDeal = pos.deals.find(d => d.entryType === 'DEAL_ENTRY_IN') || pos.deals[0];
+
+                        if (exitDeal) {
+                            const trade = {
+                                account_id: acc.id,
+                                user_id: acc.user_id,
+                                pair: exitDeal.symbol,
+                                position: entryDeal.type.includes('BUY') ? 'BUY' : 'SELL',
+                                entry_price: entryDeal.price,
+                                exit_price: exitDeal.price,
+                                lot_size: entryDeal.volume,
+                                result: pos.profit >= 0 ? 'TP' : 'SL',
+                                pnl: pos.profit,
+                                commission: pos.commission,
+                                net_pnl: (pos.profit + pos.commission + pos.swap).toFixed(2),
+                                opened_at: entryDeal.time,
+                                closed_at: exitDeal.time,
+                                external_id: `metaapi_pos_${posId}`,
+                                notes: `Auto-synced. Position ID: ${posId}`,
+                                tags: ['Automated']
+                            };
+
+                            // Upsert in Supabase
+                            const upRes = await fetch(`${supabaseUrl}/rest/v1/trades?on_conflict=external_id`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'apikey': supabaseKey,
+                                    'Authorization': `Bearer ${supabaseKey}`,
+                                    'Prefer': 'resolution=merge-duplicates'
+                                },
+                                body: JSON.stringify(trade)
+                            });
+
+                            if (upRes.ok) accReport.saved++;
+                            else accReport.errors.push(`DB Error on trade ${posId}`);
+                        }
+                    }
+                    accReport.syncStatus = 'success';
                 }
 
-                console.log(`[SYNC] Found ${historyData.length} raw deals for account ${acc.id}`);
-
-                // 3. Group deals by Position ID
-                const positions = {};
-                historyData.forEach(deal => {
-                    if (!deal.positionId) return;
-                    if (!positions[deal.positionId]) {
-                        positions[deal.positionId] = { deals: [], profit: 0, commission: 0, swap: 0 };
-                    }
-                    positions[deal.positionId].deals.push(deal);
-                    positions[deal.positionId].profit += (deal.profit || 0);
-                    positions[deal.positionId].commission += (deal.commission || 0);
-                    positions[deal.positionId].swap += (deal.swap || 0);
-                });
-
-                let savedCount = 0;
-                for (const posId in positions) {
-                    const pos = positions[posId];
-                    const exitDeal = pos.deals.find(d => d.entryType === 'DEAL_ENTRY_OUT' || d.entryType === 'DEAL_ENTRY_OUT_BY');
-                    const entryDeal = pos.deals.find(d => d.entryType === 'DEAL_ENTRY_IN') || pos.deals[0];
-
-                    if (exitDeal) {
+                // Also try to sync OPEN positions
+                const openData = await callMetaApi(
+                    'mt-client-api-v1.london.agiliumtrade.ai',
+                    `/users/current/accounts/${acc.metaapi_account_id}/positions`,
+                    metaToken
+                );
+                if (openData && !openData.error) {
+                    for (const pos of openData) {
                         const trade = {
                             account_id: acc.id,
                             user_id: acc.user_id,
-                            pair: exitDeal.symbol,
-                            position: entryDeal.type.includes('BUY') ? 'BUY' : 'SELL',
-                            entry_price: entryDeal.price,
-                            exit_price: exitDeal.price,
-                            lot_size: entryDeal.volume,
-                            result: pos.profit >= 0 ? 'TP' : 'SL',
+                            pair: pos.symbol,
+                            position: pos.type.includes('BUY') ? 'BUY' : 'SELL',
+                            entry_price: pos.openPrice,
+                            lot_size: pos.volume,
+                            result: 'Running',
                             pnl: pos.profit,
-                            commission: pos.commission,
-                            net_pnl: pos.profit + pos.commission + pos.swap,
-                            opened_at: entryDeal.time,
-                            closed_at: exitDeal.time,
-                            external_id: `metaapi_pos_${posId}`,
-                            notes: `Auto-synced. Position: ${posId}`,
-                            tags: ['Automated']
+                            net_pnl: (pos.profit + (pos.commission || 0) + (pos.swap || 0)).toFixed(2),
+                            opened_at: pos.time,
+                            external_id: `metaapi_open_${pos.id}`,
+                            notes: `Open Position synced. ID: ${pos.id}`,
+                            tags: ['Automated', 'Running']
                         };
-
-                        // Use Proper PostgREST Upsert Syntax
-                        const upsertRes = await fetch(`${supabaseUrl}/rest/v1/trades?on_conflict=external_id`, {
+                        await fetch(`${supabaseUrl}/rest/v1/trades?on_conflict=external_id`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -99,56 +136,40 @@ export default async function handler(req, res) {
                             },
                             body: JSON.stringify(trade)
                         });
-
-                        if (upsertRes.ok) savedCount++;
-                        else console.error(`[SYNC] Supabase Save Error:`, await upsertRes.text());
                     }
+                    accReport.openPositions = openData.length;
                 }
 
-                report.push({ accountId: acc.id, status: 'success', syncedTrades: savedCount });
-
             } catch (err) {
-                console.error(`[SYNC] Critical error for account ${acc.id}:`, err);
-                report.push({ accountId: acc.id, status: 'error', detail: err.message });
+                accReport.syncStatus = 'error';
+                accReport.errors.push(err.message);
             }
+            report.push(accReport);
         }
 
         return res.status(200).json({ success: true, report });
 
     } catch (err) {
-        console.error('[SYNC] Global failure:', err);
         return res.status(500).json({ error: err.message });
     }
 }
 
-/**
- * Helper to call MetaApi via native HTTPS
- */
 async function callMetaApi(hostname, path, token) {
     return new Promise((resolve) => {
         const options = {
-            hostname,
-            path,
-            method: 'GET',
+            hostname, path, method: 'GET',
             headers: { 'auth-token': token, 'User-Agent': 'SevenJournal/1.0' },
-            timeout: 15000
+            timeout: 20000
         };
-
         const req = https.request(options, (res) => {
             let body = '';
             res.on('data', chunk => body += chunk);
             res.on('end', () => {
-                try {
-                    const data = JSON.parse(body);
-                    resolve(data);
-                } catch (e) {
-                    resolve({ error: 'Invalid JSON response from MetaApi' });
-                }
+                try { resolve(JSON.parse(body)); } catch (e) { resolve({ error: 'Invalid JSON' }); }
             });
         });
-
         req.on('error', e => resolve({ error: e.message }));
-        req.on('timeout', () => { req.destroy(); resolve({ error: 'MetaApi Timeout' }); });
+        req.on('timeout', () => { req.destroy(); resolve({ error: 'Timeout' }); });
         req.end();
     });
 }
