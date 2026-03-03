@@ -219,14 +219,16 @@ export const useAuthStore = create<AuthState>()(
                 if (!user) return { error: { message: 'No user authenticated' } };
 
                 try {
-                    console.log('Inserting into trading_accounts...', accountData);
+                    const { data: { session } } = await supabase.auth.getSession();
+                    console.log('Current session check before insert:', session?.user?.id);
 
-                    // Create a promise that rejects after 30s
-                    const timeoutPromise = new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error('Database timeout: Supabase is taking too long to respond (>30s). This usually means the table "trading_accounts" is missing or RLS policies are blocking the insert. Please run the SQL setup script.')), 30000)
-                    );
+                    if (session?.user?.id !== user.id) {
+                        console.error('ID MISMATCH: Store has', user.id, 'but Auth Session has', session?.user?.id);
+                    }
 
-                    const insertPromise = supabase
+                    console.log('Inserting into trading_accounts (NO TIMEOUT)...', accountData);
+
+                    const { data, error } = await supabase
                         .from('trading_accounts')
                         .insert({
                             user_id: user.id,
@@ -240,10 +242,8 @@ export const useAuthStore = create<AuthState>()(
                         .select()
                         .single();
 
-                    const { data, error } = await Promise.race([insertPromise, timeoutPromise]) as any;
-
                     if (error) {
-                        console.error('Supabase insert error:', error);
+                        console.error('Supabase raw error:', JSON.stringify(error, null, 2));
                         return { error };
                     }
 
