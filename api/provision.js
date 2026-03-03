@@ -1,6 +1,11 @@
-// Provision a MT5 account via MetaApi REST API (no heavy SDK)
+import https from 'https';
+
+/**
+ * Provision a MT5 account via MetaApi REST API using native HTTPS
+ * to avoid "fetch failed" errors common in some serverless environments.
+ */
 export default async function handler(req, res) {
-    console.log('--- MT5 Provisioning Started ---');
+    console.log('--- MT5 Provisioning (Native HTTPS) Started ---');
 
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -10,17 +15,8 @@ export default async function handler(req, res) {
     const supabaseKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
     const metaToken = (process.env.METAAPI_TOKEN || '').trim();
 
-    // Fast check for environment variables
-    const missing = [];
-    if (!supabaseUrl) missing.push('SUPABASE_URL');
-    if (!supabaseKey) missing.push('SUPABASE_SERVICE_ROLE_KEY');
-    if (!metaToken) missing.push('METAAPI_TOKEN');
-
-    if (missing.length > 0) {
-        console.error('Missing environment variables:', missing.join(', '));
-        return res.status(500).json({
-            error: `Missing configuration on Vercel: ${missing.join(', ')}. Please add them in Vercel Project Settings > Environment Variables.`
-        });
+    if (!supabaseUrl || !supabaseKey || !metaToken) {
+        return res.status(500).json({ error: 'Missing environment variables: SUPABASE_URL, SERVICE_KEY or METAAPI_TOKEN' });
     }
 
     const { accountId, login, password, server, platform = 'mt5' } = req.body || {};
@@ -31,92 +27,90 @@ export default async function handler(req, res) {
     }
 
     try {
-        // --- 0. Reachability Check ---
-        console.log('[PROVISION] Step 0: Connectivity probe...');
-        try {
-            await fetch('https://www.google.com', { method: 'HEAD', signal: AbortSignal.timeout(5000) });
-            console.log('[PROVISION] Google reached successfully');
-        } catch (e) {
-            console.warn('[PROVISION] Connectivity Warning: google.com reached failed:', e.message);
-        }
+        // --- 1. Call MetaApi Provisioning ---
+        console.log('[PROVISION] Step 1: Calling MetaApi...');
 
-        // --- 1. Create account via MetaApi REST API ---
-        console.log('[PROVISION] Step 1: Calling MetaApi Provisioning...');
+        const postData = JSON.stringify({
+            name: `SevenJournal-${accountId}`,
+            type: 'cloud',
+            login: String(login),
+            password,
+            server,
+            platform,
+            magic: 0,
+            quoteStreamingIntervalInSeconds: 2.5
+        });
 
-        // Standard URL (Universal)
-        const metaApiUrl = 'https://mt-provisioning-api-v1.agiliumtrade.ai/users/current/accounts';
-
-        console.log(`[PROVISION] Sending request to: ${metaApiUrl}`);
-
-        let metaRes;
-        try {
-            metaRes = await fetch(metaApiUrl, {
+        const metaResponse = await new Promise((resolve, reject) => {
+            const options = {
+                hostname: 'mt-provisioning-api-v1.agiliumtrade.ai',
+                path: '/users/current/accounts',
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'auth-token': metaToken,
+                    'Content-Length': Buffer.byteLength(postData),
                     'User-Agent': 'Mozilla/5.0 (Vercel; Node.js)'
                 },
-                body: JSON.stringify({
-                    name: `SevenJournal-${accountId}`,
-                    type: 'cloud',
-                    login: String(login),
-                    password,
-                    server,
-                    platform,
-                    magic: 0,
-                    quoteStreamingIntervalInSeconds: 2.5
-                })
+                timeout: 30000
+            };
+
+            const clientReq = https.request(options, (clientRes) => {
+                let body = '';
+                clientRes.on('data', (chunk) => body += chunk);
+                clientRes.on('end', () => {
+                    try {
+                        const parsed = body ? JSON.parse(body) : {};
+                        resolve({ status: clientRes.statusCode, data: parsed });
+                    } catch (e) {
+                        resolve({ status: clientRes.statusCode, error: body });
+                    }
+                });
             });
-        } catch (fetchErr) {
-            console.error('[PROVISION] NETWORK ERROR:', fetchErr);
-            throw new Error(`Technical network failure: ${fetchErr.message}. Ensure your METAAPI_TOKEN variable in Vercel settings has no extra spaces or hidden characters.`);
+
+            clientReq.on('error', (e) => reject(e));
+            clientReq.on('timeout', () => { clientReq.destroy(); reject(new Error('MetaApi Timeout')); });
+            clientReq.write(postData);
+            clientReq.end();
+        });
+
+        if (metaResponse.status >= 300) {
+            console.error('[PROVISION] MetaApi Error:', metaResponse.status, metaResponse.data);
+            const msg = metaResponse.data?.message || metaResponse.error || 'MetaApi Connection Rejected';
+            return res.status(metaResponse.status || 500).json({ error: `MetaApi rejection: ${msg}` });
         }
 
-        if (!metaRes.ok) {
-            const errorBody = await metaRes.text();
-            console.error('[PROVISION] MetaApi API Error:', metaRes.status, errorBody);
-            let parsedError;
-            try { parsedError = JSON.parse(errorBody).message; } catch (e) { parsedError = errorBody; }
-            return res.status(500).json({ error: `MetaApi rejected connection: ${parsedError}` });
-        }
-
-        const metaData = await metaRes.json();
-        const metaApiAccountId = metaData.id;
-        console.log('[PROVISION] Step 1 Success. MetaApi ID:', metaApiAccountId);
+        const metaApiAccountId = metaResponse.data.id;
+        console.log('[PROVISION] Step 1 Success. MetaID:', metaApiAccountId);
 
         // --- 2. Update Supabase with metaapi_account_id ---
-        console.log('[PROVISION] Step 2: Linking ID in Supabase...');
+        console.log('[PROVISION] Step 2: Saving to Supabase...');
+
         const supaTargetUrl = `${supabaseUrl}/rest/v1/trading_accounts?id=eq.${accountId}`;
 
-        let supaRes;
-        try {
-            supaRes = await fetch(supaTargetUrl, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': supabaseKey,
-                    'Authorization': `Bearer ${supabaseKey}`,
-                    'Prefer': 'return=minimal'
-                },
-                body: JSON.stringify({ metaapi_account_id: metaApiAccountId })
-            });
-        } catch (fetchErr) {
-            console.error('[PROVISION] Supabase Update NETWORK Error:', fetchErr);
-            return res.status(500).json({ error: `Could not reach your database to save the connection: ${fetchErr.message}` });
-        }
+        // We still use fetch for Supabase because it seems to work (or we'll fix it if it fails)
+        const supaRes = await fetch(supaTargetUrl, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({ metaapi_account_id: metaApiAccountId })
+        });
 
         if (!supaRes.ok) {
             const supaError = await supaRes.text();
-            console.error('[PROVISION] Supabase DB Error:', supaRes.status, supaError);
-            return res.status(500).json({ error: `MetaApi connected, but failed to save ID in database: ${supaError}` });
+            console.error('[PROVISION] Supabase Error:', supaRes.status, supaError);
+            return res.status(500).json({ error: `Linked on MetaApi, but failed to save in DB: ${supaError}` });
         }
 
-        console.log('[PROVISION] All steps completed successfully!');
+        console.log('[PROVISION] Done!');
         return res.status(200).json({ success: true, metaApiAccountId });
 
     } catch (err) {
-        console.error('[PROVISION] UNEXPECTED CRITICAL ERROR:', err);
-        return res.status(500).json({ error: `An unexpected server error occurred: ${err.message}` });
+        console.error('[PROVISION] CRITICAL ERROR:', err);
+        return res.status(500).json({ error: `Connection Server Error: ${err.message}` });
     }
 }
