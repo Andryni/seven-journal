@@ -67,72 +67,104 @@ export const useAuthStore = create<AuthState>()(
             },
 
             fetchProfile: async (userId) => {
-                console.log('Fetching profile for:', userId);
-                const { data, error } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', userId)
-                    .single();
+                const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+                const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+                const token = get().accessToken;
 
-                if (error) {
-                    console.warn('Profile fetch error or missing:', error.message);
-                    // Fallback: If profile record is missing in DB, use Auth data to populate currentUser
-                    const { data: { user: authUser } } = await supabase.auth.getUser();
-                    if (authUser && authUser.id === userId) {
-                        console.log('Recovering user state from Auth session');
-                        set({
-                            currentUser: {
-                                id: authUser.id,
-                                username: authUser.user_metadata?.username || authUser.email?.split('@')[0] || 'User',
-                                email: authUser.email || '',
-                                passwordHash: '',
-                                preferredLanguage: 'fr',
-                                theme: 'dark',
-                                activeAccountId: null,
-                                createdAt: authUser.created_at
-                            }
-                        });
-                        return;
+                console.log('Fetching profile for:', userId, 'Using token:', token ? 'YES' : 'NO');
+
+                try {
+                    // Try direct fetch for the profile to avoid SDK hangs
+                    const fetchUrl = `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=*`;
+                    const response = await fetch(fetchUrl, {
+                        headers: {
+                            'apikey': supabaseAnonKey,
+                            'Authorization': token ? `Bearer ${token}` : '',
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const profile = data?.[0];
+                        if (profile) {
+                            console.log('Profile fetched successfully via Direct Fetch');
+                            set({
+                                currentUser: {
+                                    id: profile.id,
+                                    username: profile.username,
+                                    email: profile.email,
+                                    passwordHash: '',
+                                    preferredLanguage: profile.preferred_language,
+                                    theme: profile.theme,
+                                    activeAccountId: profile.active_account_id,
+                                    createdAt: profile.created_at
+                                }
+                            });
+                            return;
+                        }
+                    } else {
+                        console.warn('Profile direct fetch failed with status:', response.status);
                     }
-                    set({ currentUser: null });
-                } else if (data) {
+                } catch (e) {
+                    console.error('Error in profile direct fetch:', e);
+                }
+
+                // Fallback to Auth data if profile missing or fetch failed
+                console.log('Attempting profile fallback from Auth session...');
+                const { data: { user: authUser } } = await supabase.auth.getUser();
+                if (authUser && authUser.id === userId) {
+                    console.log('Recovering user state from Auth session');
                     set({
                         currentUser: {
-                            id: data.id,
-                            username: data.username,
-                            email: data.email,
-                            passwordHash: '', // Not used anymore
-                            preferredLanguage: data.preferred_language,
-                            theme: data.theme,
-                            activeAccountId: data.active_account_id,
-                            createdAt: data.created_at
+                            id: authUser.id,
+                            username: authUser.user_metadata?.username || authUser.email?.split('@')[0] || 'User',
+                            email: authUser.email || '',
+                            passwordHash: '',
+                            preferredLanguage: 'fr',
+                            theme: 'dark',
+                            activeAccountId: null,
+                            createdAt: authUser.created_at
                         }
                     });
                 }
             },
 
             fetchAccounts: async (userId) => {
-                const { data, error } = await supabase
-                    .from('trading_accounts')
-                    .select('*')
-                    .eq('user_id', userId);
+                const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+                const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+                const token = get().accessToken;
 
-                if (error) console.error('Error fetching accounts:', error);
-                if (data && !error) {
-                    set({
-                        accounts: data.map((a: any) => ({
-                            id: a.id,
-                            userId: a.user_id,
-                            name: a.name,
-                            initialCapital: parseFloat(a.initial_capital),
-                            currentBalance: parseFloat(a.current_balance),
-                            currency: a.currency,
-                            type: a.type,
-                            broker: a.broker,
-                            metaapiAccountId: a.metaapi_account_id,
-                            createdAt: a.created_at
-                        }))
+                try {
+                    const fetchUrl = `${supabaseUrl}/rest/v1/trading_accounts?user_id=eq.${userId}&select=*`;
+                    const response = await fetch(fetchUrl, {
+                        headers: {
+                            'apikey': supabaseAnonKey,
+                            'Authorization': token ? `Bearer ${token}` : '',
+                        }
                     });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('Accounts fetched via Direct Fetch:', data?.length || 0);
+                        set({
+                            accounts: data.map((a: any) => ({
+                                id: a.id,
+                                userId: a.user_id,
+                                name: a.name,
+                                initialCapital: parseFloat(a.initial_capital),
+                                currentBalance: parseFloat(a.current_balance),
+                                currency: a.currency,
+                                type: a.type,
+                                broker: a.broker,
+                                metaapiAccountId: a.metaapi_account_id,
+                                createdAt: a.created_at
+                            }))
+                        });
+                    } else {
+                        console.error('Accounts direct fetch failed:', response.status);
+                    }
+                } catch (e) {
+                    console.error('Error in accounts direct fetch:', e);
                 }
             },
 
@@ -177,12 +209,13 @@ export const useAuthStore = create<AuthState>()(
                         return { error };
                     }
 
-                    if (data.user) {
-                        console.log('Login successful, fetching data for:', data.user.id);
-                        await Promise.all([
-                            get().fetchProfile(data.user.id),
-                            get().fetchAccounts(data.user.id)
-                        ]);
+                    if (data.user && data.session) {
+                        console.log('Login successful, updating state...');
+                        set({ accessToken: data.session.access_token });
+                        // We don't await these to prevent UI hanging if DB is slow.
+                        // onAuthStateChange will also trigger these.
+                        get().fetchProfile(data.user.id);
+                        get().fetchAccounts(data.user.id);
                     }
                     return { error: null };
                 } catch (err: any) {
