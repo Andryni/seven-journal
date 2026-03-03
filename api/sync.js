@@ -34,7 +34,8 @@ export default async function handler(req, res) {
         }
 
         const results = [];
-        const from = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+        // Extend sync window to 30 days instead of 30 minutes to fetch history
+        const from = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
         const to = new Date().toISOString();
 
         for (const acc of accounts) {
@@ -61,7 +62,7 @@ export default async function handler(req, res) {
                         account_id: acc.id,
                         user_id: acc.user_id,
                         pair: deal.symbol,
-                        position: deal.type === 'DEAL_TYPE_BUY' ? 'SELL' : 'BUY',
+                        position: deal.type === 'DEAL_TYPE_BUY' ? 'BUY' : 'SELL',
                         entry_price: 0,
                         exit_price: deal.price,
                         lot_size: deal.volume,
