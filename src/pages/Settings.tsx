@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useTradeStore } from '../store/useTradeStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useDebriefStore } from '../store/useDebriefStore';
-import { Languages, Download, AlertTriangle, User, Database, Wallet, Plus, CheckCircle, Check } from 'lucide-react';
+import { Languages, Download, AlertTriangle, User, Database, Wallet, Plus, CheckCircle, Check, Zap } from 'lucide-react';
+import { MetaApiForm } from '../components/MetaApiForm';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { format } from 'date-fns';
@@ -201,11 +202,29 @@ export function Settings() {
                                                 <p className="font-mono font-bold text-lg text-white">${acc.currentBalance.toLocaleString()}</p>
                                             </div>
                                             {isActive && (
-                                                <span className="text-[10px] font-bold text-profit flex items-center gap-1">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-profit animate-blink" /> {t.settings.active}
-                                                </span>
+                                                <div className="flex flex-col items-end gap-1">
+                                                    <span className="text-[10px] font-bold text-profit flex items-center gap-1">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-profit animate-blink" /> {t.settings.active}
+                                                    </span>
+                                                    {acc.metaapiAccountId ? (
+                                                        <span className="text-[9px] font-bold py-0.5 px-1.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center gap-1">
+                                                            <Zap size={10} /> Sync Active
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[9px] font-bold py-0.5 px-1.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                                            Manual Only
+                                                        </span>
+                                                    )}
+                                                </div>
                                             )}
                                         </div>
+
+                                        {/* MetaApi Connect Section */}
+                                        {isActive && !acc.metaapiAccountId && (
+                                            <div className="mt-6 pt-6 border-t border-white/[0.05]">
+                                                <MetaApiForm accountId={acc.id} />
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}

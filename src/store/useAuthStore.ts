@@ -99,6 +99,7 @@ export const useAuthStore = create<AuthState>()(
                             currency: a.currency,
                             type: a.type,
                             broker: a.broker,
+                            metaapiAccountId: a.metaapi_account_id,
                             createdAt: a.created_at
                         }))
                     });
@@ -214,6 +215,7 @@ export const useAuthStore = create<AuthState>()(
                         currency: data.currency,
                         type: data.type,
                         broker: data.broker,
+                        metaapiAccountId: data.metaapi_account_id,
                         createdAt: data.created_at
                     };
                     set(state => ({ accounts: [...state.accounts, newAcc] }));

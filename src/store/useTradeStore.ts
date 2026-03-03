@@ -154,6 +154,7 @@ function mapDbTradeToSchema(d: any): Trade {
         openedAt: d.opened_at,
         closedAt: d.closed_at,
         duration: d.duration,
+        externalId: d.external_id,
         createdAt: d.created_at,
         updatedAt: d.updated_at
     };
@@ -192,6 +193,7 @@ function mapSchemaTradeToDb(t: Trade): any {
         opened_at: t.openedAt,
         closed_at: t.closedAt,
         duration: t.duration,
+        external_id: t.externalId,
         updated_at: new Date().toISOString()
     };
 }

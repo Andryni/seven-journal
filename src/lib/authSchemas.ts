@@ -22,6 +22,7 @@ export const tradingAccountSchema = z.object({
     currency: z.enum(["USD", "EUR", "GBP", "CHF", "JPY", "CAD", "AUD"]),
     type: z.enum(["Demo", "Real", "Propfirm", "Funded"]),
     broker: z.string(),
+    metaapiAccountId: z.string().optional().nullable(),
     createdAt: z.string(),
 });
 

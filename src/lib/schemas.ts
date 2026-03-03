@@ -43,6 +43,7 @@ export const tradeSchema = z.object({
     openedAt: z.string(),
     closedAt: z.string().nullable(),
     duration: z.number().nullable(),
+    externalId: z.string().optional().nullable(),
     createdAt: z.string().optional(),
     updatedAt: z.string().optional()
 });
