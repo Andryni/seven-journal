@@ -23,7 +23,10 @@ export default async function handler(req, res) {
         }
 
         const supabase = createClient(supabaseUrl, supabaseKey);
-        const api = new MetaApi(metaToken);
+
+        // Handle MetaApi class access from commonjs/esm package
+        const MetaApiClass = MetaApi.default || MetaApi;
+        const api = new MetaApiClass(metaToken);
 
         const { userId, accountId, login, password, server, platform = 'mt5' } = req.body || {};
 
