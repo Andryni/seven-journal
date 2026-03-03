@@ -33,11 +33,11 @@ export default async function handler(req, res) {
     try {
         // --- 1. Create account via MetaApi REST API ---
         console.log('[PROVISION] Step 1: Calling MetaApi Provisioning...');
-        // Use london region as it was reachable for sync.js
-        const metaApiUrl = 'https://mt-provisioning-api-v1.london.agiliumtrade.ai/users/current/accounts';
 
-        console.log(`[PROVISION] Token Check: Prefix="${metaToken?.substring(0, 5)}...", Length=${metaToken?.length}`);
-        console.log(`[PROVISION] Target URL: ${metaApiUrl}`);
+        // Standard URL (Universal)
+        const metaApiUrl = 'https://mt-provisioning-api-v1.agiliumtrade.ai/users/current/accounts';
+
+        console.log(`[PROVISION] Sending request to: ${metaApiUrl}`);
 
         let metaRes;
         try {
@@ -45,7 +45,8 @@ export default async function handler(req, res) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'auth-token': metaToken
+                    'auth-token': metaToken,
+                    'User-Agent': 'SevenJournal/1.0' // Some APIs block anonymous fetch requests
                 },
                 body: JSON.stringify({
                     name: `SevenJournal-${accountId}`,
@@ -59,8 +60,8 @@ export default async function handler(req, res) {
                 })
             });
         } catch (fetchErr) {
-            console.error('[PROVISION] NETWORK ERROR during fetch:', fetchErr);
-            throw new Error(`Technical network failure: ${fetchErr.message}. The MetaApi server at ${metaApiUrl} is currently unreachable from your server.`);
+            console.error('[PROVISION] NETWORK ERROR:', fetchErr);
+            throw new Error(`Technical network failure: ${fetchErr.message}. MetaApi might be blocking the request or the URL is unreachable from Vercel.`);
         }
 
         if (!metaRes.ok) {
