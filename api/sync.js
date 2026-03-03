@@ -1,29 +1,50 @@
 import { createClient } from '@supabase/supabase-js';
-import MetaApi from 'metaapi.cloud-sdk';
+import MetaApiPkg from 'metaapi.cloud-sdk';
+
+const MetaApi = MetaApiPkg.default || MetaApiPkg;
 
 export default async function handler(req, res) {
     try {
-        console.log('Initializing clients for sync...');
-        const supabase = createClient(
-            process.env.SUPABASE_URL,
-            process.env.SUPABASE_SERVICE_ROLE_KEY
-        );
+        console.log('--- Sync Start ---');
 
-        const MetaApiClass = MetaApi.default || MetaApi;
-        const api = new MetaApiClass(process.env.METAAPI_TOKEN);
+        // Check for required env vars
+        const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const metaToken = process.env.METAAPI_TOKEN;
 
-        const { data: accounts } = await supabase
+        if (!supabaseUrl || !supabaseKey || !metaToken) {
+            console.error('Missing configuration:', { hasUrl: !!supabaseUrl, hasKey: !!supabaseKey, hasToken: !!metaToken });
+            return res.status(500).json({
+                error: 'Configuration Error: Missing environment variables on server. Please check Vercel settings.'
+            });
+        }
+
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        const api = new MetaApi(metaToken);
+
+        const { data: accounts, error: accountError } = await supabase
             .from('trading_accounts')
             .select('id, user_id, metaapi_account_id')
             .not('metaapi_account_id', 'is', null);
 
-        if (!accounts || accounts.length === 0) return res.json({ message: 'No accounts to sync' });
+        if (accountError) {
+            console.error('Supabase fetch accounts error:', accountError);
+            throw new Error(`Database Error: ${accountError.message}`);
+        }
+
+        if (!accounts || accounts.length === 0) {
+            console.log('No MetaApi accounts to sync');
+            return res.json({ message: 'No accounts to sync' });
+        }
 
         const results = [];
 
         for (const acc of accounts) {
             try {
+                console.log(`Syncing account: ${acc.id} (MetaApi: ${acc.metaapi_account_id})`);
+
                 const account = await api.metatraderAccountApi.getAccount(acc.metaapi_account_id);
+                // RPC Connection is better for history
                 const connection = account.getRPCConnection();
                 await connection.connect();
                 await connection.waitSynchronized();
@@ -33,11 +54,14 @@ export default async function handler(req, res) {
                     new Date()
                 );
 
+                console.log(`Found ${history.deals?.length || 0} deals for account ${acc.id}`);
+
                 if (history.deals) {
                     const closedDeals = history.deals.filter(d => d.entryType === 'DEAL_ENTRY_OUT');
                     for (const deal of closedDeals) {
                         const trade = {
                             account_id: acc.id,
+                            user_id: acc.user_id, // Link to user
                             pair: deal.symbol,
                             position: deal.type === 'DEAL_TYPE_BUY' ? 'SELL' : 'BUY',
                             entry_price: 0,
@@ -59,14 +83,17 @@ export default async function handler(req, res) {
                 }
                 results.push({ accountId: acc.id, status: 'success', deals: history.deals.length });
             } catch (err) {
-                console.error(`Sync error for account ${acc.id}:`, err);
+                console.error(`Error for account ${acc.id}:`, err);
                 results.push({ accountId: acc.id, status: 'error', error: err.message });
             }
         }
 
-        res.json({ success: true, results });
+        return res.status(200).json({ success: true, results });
+
     } catch (error) {
-        console.error('Global sync error:', error);
-        res.status(500).json({ error: error.message });
+        console.error('Global Sync Fault:', error);
+        return res.status(500).json({
+            error: error.message || 'An internal error occurred during sync.'
+        });
     }
 }
