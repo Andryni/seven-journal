@@ -33,7 +33,10 @@ export default async function handler(req, res) {
     try {
         // --- 1. Create account via MetaApi REST API ---
         console.log('[PROVISION] Step 1: Calling MetaApi Provisioning...');
+        // Standard MetaApi URL
         const metaApiUrl = 'https://mt-provisioning-api-v1.agiliumtrade.ai/users/current/accounts';
+
+        console.log(`[PROVISION] Token Check: Prefix="${metaToken?.substring(0, 5)}...", Length=${metaToken?.length}`);
 
         let metaRes;
         try {
@@ -55,8 +58,8 @@ export default async function handler(req, res) {
                 })
             });
         } catch (fetchErr) {
-            console.error('[PROVISION] MetaApi Fetch NETWORK Error:', fetchErr);
-            return res.status(500).json({ error: `Connection to MetaApi Failed: ${fetchErr.message}. This might be a DNS issue or MetaApi is down.` });
+            console.error('[PROVISION] NETWORK ERROR during fetch:', fetchErr);
+            throw new Error(`Technical network failure: ${fetchErr.message}. Check if METAAPI_TOKEN is valid and Vercel has internet access.`);
         }
 
         if (!metaRes.ok) {
