@@ -32,7 +32,14 @@ export function MetaApiForm({ accountId, onConnected }: { accountId: string, onC
                 })
             });
 
-            const data = await response.json();
+            const data = await response.text().then(text => {
+                try {
+                    return JSON.parse(text);
+                } catch {
+                    throw new Error(`Server returned ${response.status}. The API service might be starting up or failing.`);
+                }
+            });
+
             if (data.success) {
                 setStatus('success');
                 if (onConnected) onConnected();
