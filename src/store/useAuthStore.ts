@@ -36,6 +36,11 @@ export const useAuthStore = create<AuthState>()(
             isLoading: true,
 
             initialize: async () => {
+                const url = import.meta.env.VITE_SUPABASE_URL;
+                console.log('--- Supabase Diagnostic ---');
+                console.log('Supabase URL being used:', url ? `${url.substring(0, 15)}...` : 'MISSING');
+                console.log('---------------------------');
+
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session?.user) {
                     await get().fetchProfile(session.user.id);
