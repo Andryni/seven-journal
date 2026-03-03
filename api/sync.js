@@ -1,5 +1,7 @@
 
-// Sync trades via MetaApi REST API (Advanced grouping by Position ID)
+import https from 'https';
+
+// Advanced Sync: History + Open Positions
 export default async function handler(req, res) {
     const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim();
     const supabaseKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
@@ -23,58 +25,93 @@ export default async function handler(req, res) {
 
         for (const acc of accounts) {
             try {
-                // 2. Fetch ALL deals (history) - Using the proven LONDON region
-                console.log(`[SYNC] Fetching history for account ${acc.metaapi_account_id}...`);
+                // --- A. SYNC CLOSED TRADES (HISTORY) ---
                 const histRes = await fetch(
-                    `https://mt-client-api-v1.london.agiliumtrade.ai/users/current/accounts/${acc.metaapi_account_id}/history-deals/time/${from}/${to}`,
+                    `https://mt-client-api-v1.agiliumtrade.agiliumtrade.ai/users/current/accounts/${acc.metaapi_account_id}/history-deals/time/${from}/${to}`,
                     { headers: { 'auth-token': metaToken } }
                 );
 
-                if (!histRes.ok) {
-                    results.push({ accountId: acc.id, status: 'error', error: 'MetaApi unreachable' });
-                    continue;
+                let closedCount = 0;
+                if (histRes.ok) {
+                    const allDeals = await histRes.json();
+                    const positions = {};
+
+                    allDeals.forEach(deal => {
+                        if (!deal.positionId) return;
+                        if (!positions[deal.positionId]) {
+                            positions[deal.positionId] = { deals: [], profit: 0, commission: 0, swap: 0 };
+                        }
+                        positions[deal.positionId].deals.push(deal);
+                        positions[deal.positionId].profit += (deal.profit || 0);
+                        positions[deal.positionId].commission += (deal.commission || 0);
+                        positions[deal.positionId].swap += (deal.swap || 0);
+                    });
+
+                    for (const posId in positions) {
+                        const pos = positions[posId];
+                        const exitDeal = pos.deals.find(d => d.entryType === 'DEAL_ENTRY_OUT' || d.entryType === 'DEAL_ENTRY_OUT_BY');
+                        const entryDeal = pos.deals.find(d => d.entryType === 'DEAL_ENTRY_IN') || pos.deals[0];
+
+                        if (exitDeal) {
+                            const trade = {
+                                account_id: acc.id,
+                                user_id: acc.user_id,
+                                pair: exitDeal.symbol,
+                                position: entryDeal.type.includes('BUY') ? 'BUY' : 'SELL',
+                                entry_price: entryDeal.price,
+                                exit_price: exitDeal.price,
+                                lot_size: entryDeal.volume,
+                                result: pos.profit >= 0 ? 'TP' : 'SL',
+                                pnl: pos.profit,
+                                commission: pos.commission,
+                                net_pnl: pos.profit + pos.commission + pos.swap,
+                                opened_at: entryDeal.time,
+                                closed_at: exitDeal.time,
+                                external_id: `metaapi_pos_${posId}`,
+                                notes: `Auto-synced. Position: ${posId}`,
+                                tags: ['Automated']
+                            };
+
+                            await fetch(`${supabaseUrl}/rest/v1/trades`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'apikey': supabaseKey,
+                                    'Authorization': `Bearer ${supabaseKey}`,
+                                    'Prefer': 'resolution=merge-duplicates',
+                                    'on-conflict': 'external_id'
+                                },
+                                body: JSON.stringify(trade)
+                            });
+                            closedCount++;
+                        }
+                    }
                 }
 
-                const allDeals = await histRes.json();
+                // --- B. SYNC OPEN POSITIONS ---
+                const openRes = await fetch(
+                    `https://mt-client-api-v1.agiliumtrade.agiliumtrade.ai/users/current/accounts/${acc.metaapi_account_id}/positions`,
+                    { headers: { 'auth-token': metaToken } }
+                );
 
-                // 3. Group deals by Position ID to reconstruct complete trades
-                const positions = {};
-                allDeals.forEach(deal => {
-                    if (!deal.positionId) return;
-                    if (!positions[deal.positionId]) {
-                        positions[deal.positionId] = { deals: [], profit: 0, commission: 0, swap: 0 };
-                    }
-                    positions[deal.positionId].deals.push(deal);
-                    positions[deal.positionId].profit += (deal.profit || 0);
-                    positions[deal.positionId].commission += (deal.commission || 0);
-                    positions[deal.positionId].swap += (deal.swap || 0);
-                });
-
-                let syncCount = 0;
-                for (const posId in positions) {
-                    const pos = positions[posId];
-                    const entryDeal = pos.deals.find(d => d.entryType === 'DEAL_ENTRY_IN');
-                    const exitDeal = pos.deals.find(d => d.entryType === 'DEAL_ENTRY_OUT');
-
-                    // We only sync completed trades (with an entry and an exit)
-                    if (entryDeal && exitDeal) {
+                let openCount = 0;
+                if (openRes.ok) {
+                    const openPositions = await openRes.json();
+                    for (const pos of openPositions) {
                         const trade = {
                             account_id: acc.id,
                             user_id: acc.user_id,
-                            pair: entryDeal.symbol,
-                            position: entryDeal.type === 'DEAL_TYPE_BUY' ? 'BUY' : 'SELL',
-                            entry_price: entryDeal.price,
-                            exit_price: exitDeal.price,
-                            lot_size: entryDeal.volume,
-                            result: pos.profit >= 0 ? 'TP' : 'SL',
+                            pair: pos.symbol,
+                            position: pos.type.includes('BUY') ? 'BUY' : 'SELL',
+                            entry_price: pos.openPrice,
+                            lot_size: pos.volume,
+                            result: 'Running',
                             pnl: pos.profit,
-                            commission: pos.commission,
-                            net_pnl: pos.profit + pos.commission + pos.swap,
-                            opened_at: entryDeal.time,
-                            closed_at: exitDeal.time,
-                            external_id: `metaapi_pos_${posId}`,
-                            notes: `Auto-synced from MetaApi. Position: ${posId}`,
-                            tags: ['Automated']
+                            net_pnl: pos.profit + (pos.commission || 0) + (pos.swap || 0),
+                            opened_at: pos.time,
+                            external_id: `metaapi_open_${pos.id}`,
+                            notes: `Open Position synced. ID: ${pos.id}`,
+                            tags: ['Automated', 'Running']
                         };
 
                         await fetch(`${supabaseUrl}/rest/v1/trades`, {
@@ -88,10 +125,11 @@ export default async function handler(req, res) {
                             },
                             body: JSON.stringify(trade)
                         });
-                        syncCount++;
+                        openCount++;
                     }
                 }
-                results.push({ accountId: acc.id, status: 'success', synced: syncCount });
+
+                results.push({ accountId: acc.id, status: 'success', closed: closedCount, open: openCount });
             } catch (err) {
                 results.push({ accountId: acc.id, status: 'error', error: err.message });
             }
