@@ -32,27 +32,39 @@ export default async function handler(req, res) {
                     metaToken, 'GET'
                 );
 
-                accReport.metaStatus = accountInfo?.state || 'N/A';
+                if (accountInfo.error) {
+                    accReport.error = `Status Fetch Error: ${accountInfo.error}`;
+                    accReport.metaStatus = 'ERROR';
+                } else {
+                    accReport.metaStatus = accountInfo?.state || 'N/A';
+                }
 
                 // 2. CRITICAL: If UNDEPLOYED, try to Deploy it!
                 if (accReport.metaStatus === 'UNDEPLOYED') {
                     accReport.action = 'deploying_started';
-                    await callMetaApi(
+                    const deployRes = await callMetaApi(
                         'mt-provisioning-api-v1.agiliumtrade.agiliumtrade.ai',
                         `/users/current/accounts/${acc.metaapi_account_id}/deploy`,
                         metaToken, 'POST'
                     );
-                    // Refresh status after deploy command
-                    accountInfo = await callMetaApi(
-                        'mt-provisioning-api-v1.agiliumtrade.agiliumtrade.ai',
-                        `/users/current/accounts/${acc.metaapi_account_id}`,
-                        metaToken, 'GET'
-                    );
-                    accReport.metaStatus = accountInfo?.state || 'DEPLOYING';
+
+                    if (deployRes.error) {
+                        accReport.error = `Deploy Error: ${deployRes.error}`;
+                    } else {
+                        // Refresh status after deploy command
+                        accountInfo = await callMetaApi(
+                            'mt-provisioning-api-v1.agiliumtrade.agiliumtrade.ai',
+                            `/users/current/accounts/${acc.metaapi_account_id}`,
+                            metaToken, 'GET'
+                        );
+                        accReport.metaStatus = accountInfo?.state || 'DEPLOYING';
+                        accReport.action = 'deployment_in_progress';
+                    }
                 }
 
                 // 3. Fetch History only if DEPLOYED
                 if (accReport.metaStatus === 'DEPLOYED') {
+                    accReport.action = 'fetching_history';
                     const historyData = await callMetaApi(
                         'mt-client-api-v1.agiliumtrade.agiliumtrade.ai',
                         `/users/current/accounts/${acc.metaapi_account_id}/history-deals/time/${fromDate}/${toDate}`,
@@ -109,17 +121,35 @@ async function callMetaApi(hostname, path, token, method = 'GET') {
     return new Promise((resolve) => {
         const options = {
             hostname, path, method,
-            headers: { 'auth-token': token, 'User-Agent': 'SevenJournal/1.0', 'Content-Length': 0 },
+            headers: {
+                'auth-token': token,
+                'User-Agent': 'SevenJournal/1.0',
+                'Content-Length': 0
+            },
             timeout: 20000
         };
         const req = https.request(options, (res) => {
             let body = '';
             res.on('data', chunk => body += chunk);
             res.on('end', () => {
-                try { resolve(JSON.parse(body)); } catch (e) { resolve({ success: true }); }
+                try {
+                    const data = JSON.parse(body);
+                    if (res.statusCode >= 400) {
+                        resolve({ error: data.message || `HTTP ${res.statusCode}`, status: res.statusCode });
+                    } else {
+                        resolve(data);
+                    }
+                } catch (e) {
+                    if (res.statusCode >= 400) {
+                        resolve({ error: `HTTP ${res.statusCode}`, status: res.statusCode });
+                    } else {
+                        resolve({ success: true });
+                    }
+                }
             });
         });
         req.on('error', e => resolve({ error: e.message }));
+        req.on('timeout', () => { req.destroy(); resolve({ error: 'Timeout after 20s' }); });
         req.end();
     });
 }
