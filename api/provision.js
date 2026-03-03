@@ -1,19 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 import MetaApi from 'metaapi.cloud-sdk';
 
-const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-const api = new MetaApi.default(process.env.METAAPI_TOKEN);
-
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const { userId, accountId, login, password, server, platform = 'mt5' } = req.body;
-
     try {
+        console.log('Initializing clients...');
+        const supabase = createClient(
+            process.env.SUPABASE_URL,
+            process.env.SUPABASE_SERVICE_ROLE_KEY
+        );
+
+        // Use property access for MetaApi if default is not correct
+        const MetaApiClass = MetaApi.default || MetaApi;
+        const api = new MetaApiClass(process.env.METAAPI_TOKEN);
+
+        const { userId, accountId, login, password, server, platform = 'mt5' } = req.body;
+
         const account = await api.metatraderAccountApi.createAccount({
             name: `SevenJournal-${accountId}`,
             type: 'cloud',

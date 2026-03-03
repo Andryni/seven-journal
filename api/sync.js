@@ -1,20 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 import MetaApi from 'metaapi.cloud-sdk';
 
-const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-const api = new MetaApi.default(process.env.METAAPI_TOKEN);
-
 export default async function handler(req, res) {
-    // Basic security for Cron (Vercel sets this header)
-    // if (req.headers['authorization'] !== `Bearer ${process.env.CRON_SECRET}`) {
-    //     return res.status(401).end('Unauthorized');
-    // }
-
     try {
+        console.log('Initializing clients for sync...');
+        const supabase = createClient(
+            process.env.SUPABASE_URL,
+            process.env.SUPABASE_SERVICE_ROLE_KEY
+        );
+
+        const MetaApiClass = MetaApi.default || MetaApi;
+        const api = new MetaApiClass(process.env.METAAPI_TOKEN);
+
         const { data: accounts } = await supabase
             .from('trading_accounts')
             .select('id, user_id, metaapi_account_id')
@@ -27,8 +24,6 @@ export default async function handler(req, res) {
         for (const acc of accounts) {
             try {
                 const account = await api.metatraderAccountApi.getAccount(acc.metaapi_account_id);
-                // We don't use account.waitConnected() here because it's too slow for serverless
-                // Instead we connect and fetch history quickly
                 const connection = account.getRPCConnection();
                 await connection.connect();
                 await connection.waitSynchronized();
@@ -64,12 +59,14 @@ export default async function handler(req, res) {
                 }
                 results.push({ accountId: acc.id, status: 'success', deals: history.deals.length });
             } catch (err) {
+                console.error(`Sync error for account ${acc.id}:`, err);
                 results.push({ accountId: acc.id, status: 'error', error: err.message });
             }
         }
 
         res.json({ success: true, results });
     } catch (error) {
+        console.error('Global sync error:', error);
         res.status(500).json({ error: error.message });
     }
 }
