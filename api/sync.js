@@ -23,9 +23,10 @@ export default async function handler(req, res) {
 
         for (const acc of accounts) {
             try {
-                // 2. Fetch ALL deals (history)
+                // 2. Fetch ALL deals (history) - Using the proven LONDON region
+                console.log(`[SYNC] Fetching history for account ${acc.metaapi_account_id}...`);
                 const histRes = await fetch(
-                    `https://mt-client-api-v1.agiliumtrade.agiliumtrade.ai/users/current/accounts/${acc.metaapi_account_id}/history-deals/time/${from}/${to}`,
+                    `https://mt-client-api-v1.london.agiliumtrade.ai/users/current/accounts/${acc.metaapi_account_id}/history-deals/time/${from}/${to}`,
                     { headers: { 'auth-token': metaToken } }
                 );
 
