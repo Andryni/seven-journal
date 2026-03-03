@@ -9,6 +9,7 @@ interface AuthState {
     goals: UserGoals[];
     checklists: TradingPlanChecklist[];
     isLoading: boolean;
+    accessToken: string | null;
 
     register: (username: string, email: string, password: string) => Promise<{ error: any }>;
     login: (email: string, password: string) => Promise<{ error: any }>;
@@ -34,15 +35,17 @@ export const useAuthStore = create<AuthState>()(
             goals: [],
             checklists: [],
             isLoading: true,
+            accessToken: null,
 
             initialize: async () => {
                 const url = import.meta.env.VITE_SUPABASE_URL;
                 console.log('--- Supabase Diagnostic ---');
-                console.log('Supabase URL being used:', url ? `${url.substring(0, 15)}...` : 'MISSING');
+                console.log('Supabase URL:', url ? `${url.substring(0, 15)}...` : 'MISSING');
                 console.log('---------------------------');
 
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session?.user) {
+                    set({ accessToken: session.access_token });
                     await get().fetchProfile(session.user.id);
                     await get().fetchAccounts(session.user.id);
                 }
@@ -51,12 +54,13 @@ export const useAuthStore = create<AuthState>()(
                 supabase.auth.onAuthStateChange(async (event: any, session: any) => {
                     console.log('Auth state change event:', event, 'User ID:', session?.user?.id);
                     if (session?.user) {
+                        set({ accessToken: session.access_token });
                         // Force clearing accounts to avoid showing data from a previous user
                         set({ accounts: [] });
                         await get().fetchProfile(session.user.id);
                         await get().fetchAccounts(session.user.id);
                     } else {
-                        set({ currentUser: null, accounts: [], goals: [], checklists: [] });
+                        set({ currentUser: null, accounts: [], accessToken: null, goals: [], checklists: [] });
                     }
                     set({ isLoading: false });
                 });
@@ -224,9 +228,13 @@ export const useAuthStore = create<AuthState>()(
                 try {
                     console.log('--- MT5 Account Insertion (DIRECT FETCH) ---');
 
-                    // Get session token to be sure we are authorized
-                    const { data: { session } } = await supabase.auth.getSession();
-                    if (!session) throw new Error('No active Supabase session found. Please logout and login again.');
+                    const token = get().accessToken;
+                    if (!token) {
+                        console.warn('No accessToken in store, attempting one-time fallback fetch...');
+                        const { data: { session } } = await supabase.auth.getSession();
+                        if (!session?.access_token) throw new Error('No active session token. Please logout and login again.');
+                        set({ accessToken: session.access_token });
+                    }
 
                     const payload = {
                         user_id: user.id,
@@ -245,7 +253,7 @@ export const useAuthStore = create<AuthState>()(
                         headers: {
                             'Content-Type': 'application/json',
                             'apikey': supabaseAnonKey,
-                            'Authorization': `Bearer ${session.access_token}`,
+                            'Authorization': `Bearer ${token || get().accessToken}`,
                             'Prefer': 'return=representation'
                         },
                         body: JSON.stringify(payload)
