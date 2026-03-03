@@ -216,9 +216,9 @@ export const useAuthStore = create<AuthState>()(
                 try {
                     console.log('Inserting into trading_accounts...', accountData);
 
-                    // Create a promise that rejects after 10s
+                    // Create a promise that rejects after 30s
                     const timeoutPromise = new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error('Database timeout: Supabase is not responding. Check your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY variables.')), 10000)
+                        setTimeout(() => reject(new Error('Database timeout: Supabase is taking too long to respond (>30s). This usually means the table "trading_accounts" is missing or RLS policies are blocking the insert. Please run the SQL setup script.')), 30000)
                     );
 
                     const insertPromise = supabase
