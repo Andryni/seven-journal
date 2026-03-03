@@ -44,8 +44,10 @@ export const useAuthStore = create<AuthState>()(
                 set({ isLoading: false });
 
                 supabase.auth.onAuthStateChange(async (event: any, session: any) => {
-                    console.log('Auth state change:', event, session?.user?.id);
+                    console.log('Auth state change event:', event, 'User ID:', session?.user?.id);
                     if (session?.user) {
+                        // Force clearing accounts to avoid showing data from a previous user
+                        set({ accounts: [] });
                         await get().fetchProfile(session.user.id);
                         await get().fetchAccounts(session.user.id);
                     } else {
@@ -56,14 +58,35 @@ export const useAuthStore = create<AuthState>()(
             },
 
             fetchProfile: async (userId) => {
+                console.log('Fetching profile for:', userId);
                 const { data, error } = await supabase
                     .from('profiles')
                     .select('*')
                     .eq('id', userId)
                     .single();
 
-                if (error) console.error('Error fetching profile:', error);
-                if (data && !error) {
+                if (error) {
+                    console.warn('Profile fetch error or missing:', error.message);
+                    // Fallback: If profile record is missing in DB, use Auth data to populate currentUser
+                    const { data: { user: authUser } } = await supabase.auth.getUser();
+                    if (authUser && authUser.id === userId) {
+                        console.log('Recovering user state from Auth session');
+                        set({
+                            currentUser: {
+                                id: authUser.id,
+                                username: authUser.user_metadata?.username || authUser.email?.split('@')[0] || 'User',
+                                email: authUser.email || '',
+                                passwordHash: '',
+                                preferredLanguage: 'fr',
+                                theme: 'dark',
+                                activeAccountId: null,
+                                createdAt: authUser.created_at
+                            }
+                        });
+                        return;
+                    }
+                    set({ currentUser: null });
+                } else if (data) {
                     set({
                         currentUser: {
                             id: data.id,
@@ -76,8 +99,6 @@ export const useAuthStore = create<AuthState>()(
                             createdAt: data.created_at
                         }
                     });
-                } else if (!error) {
-                    set({ currentUser: null });
                 }
             },
 
