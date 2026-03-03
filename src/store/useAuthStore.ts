@@ -189,41 +189,65 @@ export const useAuthStore = create<AuthState>()(
 
             addAccount: async (accountData) => {
                 const user = get().currentUser;
-                if (!user) return { error: 'No user authenticated' };
+                console.log('addAccount called for user:', user?.id);
+                if (!user) return { error: { message: 'No user authenticated' } };
 
-                const { data, error } = await supabase
-                    .from('trading_accounts')
-                    .insert({
-                        user_id: user.id,
-                        name: accountData.name,
-                        initial_capital: accountData.initialCapital,
-                        current_balance: accountData.currentBalance,
-                        currency: accountData.currency,
-                        type: accountData.type,
-                        broker: accountData.broker
-                    })
-                    .select()
-                    .single();
+                try {
+                    console.log('Inserting into trading_accounts...', accountData);
 
-                if (!error && data) {
-                    const newAcc: TradingAccount = {
-                        id: data.id,
-                        userId: data.user_id,
-                        name: data.name,
-                        initialCapital: parseFloat(data.initial_capital),
-                        currentBalance: parseFloat(data.current_balance),
-                        currency: data.currency,
-                        type: data.type,
-                        broker: data.broker,
-                        metaapiAccountId: data.metaapi_account_id,
-                        createdAt: data.created_at
-                    };
-                    set(state => ({ accounts: [...state.accounts, newAcc] }));
-                    if (!user.activeAccountId) {
-                        await get().setActiveAccount(newAcc.id);
+                    // Create a promise that rejects after 10s
+                    const timeoutPromise = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Database timeout: Supabase is not responding. Check your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY variables.')), 10000)
+                    );
+
+                    const insertPromise = supabase
+                        .from('trading_accounts')
+                        .insert({
+                            user_id: user.id,
+                            name: accountData.name,
+                            initial_capital: accountData.initialCapital,
+                            current_balance: accountData.currentBalance,
+                            currency: accountData.currency,
+                            type: accountData.type,
+                            broker: accountData.broker
+                        })
+                        .select()
+                        .single();
+
+                    const { data, error } = await Promise.race([insertPromise, timeoutPromise]) as any;
+
+                    if (error) {
+                        console.error('Supabase insert error:', error);
+                        return { error };
                     }
+
+                    if (data) {
+                        console.log('Account created successfully:', data.id);
+                        const newAcc: TradingAccount = {
+                            id: data.id,
+                            userId: data.user_id,
+                            name: data.name,
+                            initialCapital: parseFloat(data.initial_capital),
+                            currentBalance: parseFloat(data.current_balance),
+                            currency: data.currency,
+                            type: data.type,
+                            broker: data.broker,
+                            metaapiAccountId: data.metaapi_account_id,
+                            createdAt: data.created_at
+                        };
+                        set(state => ({ accounts: [...state.accounts, newAcc] }));
+                        if (!user.activeAccountId) {
+                            console.log('Propagating active account...');
+                            await get().setActiveAccount(newAcc.id);
+                        }
+                        return { error: null };
+                    }
+
+                    return { error: { message: 'No data returned from database' } };
+                } catch (err: any) {
+                    console.error('Unexpected error in addAccount:', err);
+                    return { error: { message: err.message || 'Unknown database error' } };
                 }
-                return { error };
             },
 
             updateAccount: async (id, updates) => {
