@@ -17,15 +17,22 @@ export default async function handler(req, res) {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     try {
-        // 1. Verify account exists
+        console.log('Webhook triggered for accountId:', accountId);
+
+        // 1. Verify account exists - using a more direct approach
         const { data: account, error: accError } = await supabase
             .from('trading_accounts')
-            .select('user_id')
-            .eq('id', accountId)
+            .select('user_id, id')
+            .eq('id', accountId.trim()) // Trim to avoid any hidden spaces
             .single();
 
         if (accError || !account) {
-            return res.status(404).json({ error: 'Account not found. Verify your Account ID.' });
+            console.error('Account search error:', accError, 'for ID:', accountId);
+            return res.status(404).json({
+                error: 'Account not found',
+                receivedId: accountId,
+                hint: 'Check if this ID exists in your Supabase trading_accounts table'
+            });
         }
 
         // 2. Helper to fix MQL5 date format (2024.03.04 10:00:00 -> 2024-03-04 10:00:00)
