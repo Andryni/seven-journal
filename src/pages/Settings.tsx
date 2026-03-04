@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useDebriefStore } from '../store/useDebriefStore';
 import { Languages, Download, AlertTriangle, User, Database, Wallet, Plus, CheckCircle, Check, Zap } from 'lucide-react';
 import { MetaApiForm } from '../components/MetaApiForm';
+import { Mql5WebhookForm } from '../components/Mql5WebhookForm';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { format } from 'date-fns';
@@ -19,6 +20,7 @@ const TABS = (t: any) => [
 export function Settings() {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('Accounts');
+    const [connectionMethod, setConnectionMethod] = useState<'metaapi' | 'mql5'>('metaapi');
     const trades = useTradeStore(state => state.trades);
     const debriefs = useDebriefStore(state => state.debriefs);
 
@@ -219,10 +221,31 @@ export function Settings() {
                                             )}
                                         </div>
 
-                                        {/* MetaApi Connect Section */}
+                                        {/* Connection Section */}
                                         {isActive && !acc.metaapiAccountId && (
-                                            <div className="mt-6 pt-6 border-t border-white/[0.05]">
-                                                <MetaApiForm accountId={acc.id} />
+                                            <div className="mt-6 pt-6 border-t border-white/[0.05] space-y-6">
+                                                <div className="flex items-center gap-2 p-1 rounded-xl bg-white/5 border border-white/10 w-fit">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setConnectionMethod('metaapi'); }}
+                                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${connectionMethod === 'metaapi' ? 'bg-primary-light/20 text-primary-light border border-primary-light/30' : 'text-text-muted hover:text-white'}`}
+                                                    >
+                                                        MetaApi (Auto)
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setConnectionMethod('mql5'); }}
+                                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${connectionMethod === 'mql5' ? 'bg-primary-light/20 text-primary-light border border-primary-light/30' : 'text-text-muted hover:text-white'}`}
+                                                    >
+                                                        MQL5 (Manual WebRequest)
+                                                    </button>
+                                                </div>
+
+                                                <div className="animate-fade-in">
+                                                    {connectionMethod === 'metaapi' ? (
+                                                        <MetaApiForm accountId={acc.id} />
+                                                    ) : (
+                                                        <Mql5WebhookForm accountId={acc.id} />
+                                                    )}
+                                                </div>
                                             </div>
                                         )}
                                     </div>
