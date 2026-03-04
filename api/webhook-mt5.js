@@ -47,10 +47,21 @@ export default async function handler(req, res) {
                 .eq('id', accountId.trim());
         }
 
-        // 3. Helper to fix MQL5 date format (2024.03.04 10:00:00 -> 2024-03-04 10:00:00)
+        // 4. Time helpers
         const fixDate = (d) => typeof d === 'string' ? d.replaceAll('.', '-') : d;
+        const getSession = (isoTime) => {
+            const hour = new Date(isoTime).getUTCHours();
+            if (hour >= 0 && hour < 8) return 'Asia';
+            if (hour >= 8 && hour < 14) return 'London';
+            if (hour >= 13 && hour < 21) return 'New York';
+            if ((hour >= 13 && hour < 14)) return 'Overlap';
+            return 'Off Session';
+        };
 
-        // 4. Prepare trade data
+        const opened_at = fixDate(trade.openTime);
+        const session = getSession(opened_at);
+
+        // 5. Prepare trade data
         const profit = parseFloat(trade.profit);
         const tradeData = {
             account_id: accountId,
@@ -64,9 +75,11 @@ export default async function handler(req, res) {
             pnl: profit,
             commission: parseFloat(trade.commission || 0),
             net_pnl: (profit + parseFloat(trade.commission || 0) + parseFloat(trade.swap || 0)).toFixed(2),
-            opened_at: fixDate(trade.openTime),
+            opened_at: opened_at,
             closed_at: fixDate(trade.closeTime),
             external_id: trade.externalId,
+            session: session,
+            timeframe: trade.timeframe || 'M15', // Default to M15 if not provided
             tags: trade.isHistorical ? ['MT5-Import'] : ['MT5-Direct']
         };
 
