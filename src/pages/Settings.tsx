@@ -190,26 +190,24 @@ export function Settings() {
                                             boxShadow: isActive ? '0 0 20px rgba(124,58,237,0.1)' : undefined,
                                         }}>
 
-                                        {/* Delete Button */}
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (window.confirm(t.common.confirmDelete || 'Delete this account and all associated data?')) {
-                                                    deleteAccount(acc.id);
-                                                }
-                                            }}
-                                            className="absolute top-4 right-4 p-2 rounded-lg bg-loss/10 text-loss opacity-0 group-hover:opacity-100 transition-opacity hover:bg-loss/20"
-                                            title="Delete Account"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-
                                         <div className="flex justify-between items-start mb-3">
-                                            <div className="pr-8">
+                                            <div className="pr-4">
                                                 <h4 className="font-bold text-white">{acc.name}</h4>
                                                 <p className="text-text-muted text-xs mt-0.5">{acc.broker} · {acc.type}</p>
                                             </div>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (window.confirm(t.common.confirmDelete)) {
+                                                            deleteAccount(acc.id);
+                                                        }
+                                                    }}
+                                                    className="p-2 rounded-lg bg-loss/5 text-loss/40 opacity-0 group-hover:opacity-100 transition-all hover:bg-loss/20 hover:text-loss"
+                                                    title="Delete Account"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
                                                 <span className="text-[10px] font-bold px-2 py-1 rounded-lg"
                                                     style={{ background: 'rgba(124,58,237,0.15)', color: '#a78bfa', border: '1px solid rgba(124,58,237,0.2)' }}>
                                                     {acc.currency}
