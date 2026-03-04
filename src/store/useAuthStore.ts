@@ -157,6 +157,7 @@ export const useAuthStore = create<AuthState>()(
                                 type: a.type,
                                 broker: a.broker,
                                 metaapiAccountId: a.metaapi_account_id,
+                                connectionMethod: a.connection_method || 'mql5',
                                 createdAt: a.created_at
                             }))
                         });
@@ -276,7 +277,8 @@ export const useAuthStore = create<AuthState>()(
                         current_balance: accountData.currentBalance,
                         currency: accountData.currency || 'USD',
                         type: accountData.type,
-                        broker: accountData.broker
+                        broker: accountData.broker,
+                        connection_method: accountData.connectionMethod || 'mql5'
                     };
 
                     console.log('Target URL:', `${supabaseUrl}/rest/v1/trading_accounts`);
@@ -315,6 +317,7 @@ export const useAuthStore = create<AuthState>()(
                             type: newRow.type,
                             broker: newRow.broker,
                             metaapiAccountId: newRow.metaapi_account_id,
+                            connectionMethod: newRow.connection_method || 'mql5',
                             createdAt: newRow.created_at
                         };
                         set(state => ({ accounts: [...state.accounts, newAcc] }));

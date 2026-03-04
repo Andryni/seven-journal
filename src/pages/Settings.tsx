@@ -208,13 +208,13 @@ export function Settings() {
                                                     <span className="text-[10px] font-bold text-profit flex items-center gap-1">
                                                         <span className="w-1.5 h-1.5 rounded-full bg-profit animate-blink" /> {t.settings.active}
                                                     </span>
-                                                    {acc.metaapiAccountId ? (
-                                                        <span className="text-[9px] font-bold py-0.5 px-1.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center gap-1">
-                                                            <Zap size={10} /> Sync Active
+                                                    {acc.connectionMethod === 'metaapi' ? (
+                                                        <span className={`text-[9px] font-bold py-0.5 px-1.5 rounded flex items-center gap-1 ${acc.metaapiAccountId ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+                                                            <Zap size={10} /> {acc.metaapiAccountId ? 'Synced' : 'Pending'}
                                                         </span>
                                                     ) : (
-                                                        <span className="text-[9px] font-bold py-0.5 px-1.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                                                            Manual Only
+                                                        <span className="text-[9px] font-bold py-0.5 px-1.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                                                            <Check size={10} /> MQL5 Active
                                                         </span>
                                                     )}
                                                 </div>
@@ -222,7 +222,7 @@ export function Settings() {
                                         </div>
 
                                         {/* Connection Section */}
-                                        {isActive && !acc.metaapiAccountId && (
+                                        {isActive && ((acc.connectionMethod === 'metaapi' && !acc.metaapiAccountId) || (acc.connectionMethod === 'mql5')) && (
                                             <div className="mt-6 pt-6 border-t border-white/[0.05] space-y-6">
                                                 <div className="flex items-center gap-2 p-1 rounded-xl bg-white/5 border border-white/10 w-fit">
                                                     <button
@@ -338,6 +338,7 @@ const AccountForm = ({ onCreated }: { onCreated: () => void }) => {
     const [broker, setBroker] = useState('');
     const [type, setType] = useState<'Demo' | 'Real' | 'Propfirm' | 'Funded'>('Demo');
     const [currency, setCurrency] = useState<'USD' | 'EUR' | 'GBP' | 'CHF' | 'JPY' | 'CAD' | 'AUD'>('USD');
+    const [connectionMethod, setConnectionMethod] = useState<'metaapi' | 'mql5'>('mql5');
     const [created, setCreated] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -345,7 +346,7 @@ const AccountForm = ({ onCreated }: { onCreated: () => void }) => {
         e.preventDefault();
         if (!currentUser) return;
         setIsSaving(true);
-        const { error } = await addAccount({ userId: currentUser.id, name, initialCapital: parseFloat(balance), currentBalance: parseFloat(balance), currency, type, broker });
+        const { error } = await addAccount({ userId: currentUser.id, name, initialCapital: parseFloat(balance), currentBalance: parseFloat(balance), currency, type, broker, connectionMethod });
 
         if (!error) {
             setName(''); setBroker('');
@@ -362,6 +363,27 @@ const AccountForm = ({ onCreated }: { onCreated: () => void }) => {
                 <label className="section-label mb-2 block">{t.settings.accountName}</label>
                 <input required value={name} onChange={e => setName(e.target.value)} className="input-field" placeholder="e.g. My Account" />
             </div>
+
+            <div>
+                <label className="section-label mb-2 block">Connection Method</label>
+                <div className="grid grid-cols-2 gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setConnectionMethod('mql5')}
+                        className={`p-2 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all ${connectionMethod === 'mql5' ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400' : 'bg-white/5 border-white/10 text-text-muted hover:text-white'}`}
+                    >
+                        MQL5 (Free)
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setConnectionMethod('metaapi')}
+                        className={`p-2 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all ${connectionMethod === 'metaapi' ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400' : 'bg-white/5 border-white/10 text-text-muted hover:text-white'}`}
+                    >
+                        MetaApi (Auto)
+                    </button>
+                </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
                 <div>
                     <label className="section-label mb-2 block">{t.settings.startingBalance}</label>

@@ -37,13 +37,9 @@ export default async function handler(req, res) {
             const updates = {
                 broker: acc.broker,
                 currency: acc.currency,
-                current_balance: parseFloat(acc.balance)
+                current_balance: parseFloat(acc.balance),
+                initial_capital: parseFloat(acc.balance) // Always update or set initial capital from MT5
             };
-
-            // Auto-fill initial capital if it's currently 0 or very small
-            if (!account.initial_capital || account.initial_capital < 1) {
-                updates.initial_capital = parseFloat(acc.balance);
-            }
 
             await supabase
                 .from('trading_accounts')
