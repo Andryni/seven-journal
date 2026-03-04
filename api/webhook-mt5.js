@@ -56,11 +56,13 @@ export default async function handler(req, res) {
 
         const getSession = (isoDate) => {
             try {
-                const hour = new Date(isoDate).getUTCHours();
-                if (hour >= 0 && hour < 8) return 'Asia';
-                if (hour >= 8 && hour < 14) return 'London';
-                if (hour >= 13 && hour < 21) return 'New York';
-                return 'Off Session';
+                // On extrait l'heure directement du texte envoyé par MT5 (qui est en GMT+3)
+                const hour = parseInt(isoDate.split('T')[1].split(':')[0]);
+
+                if (hour >= 0 && hour < 10) return 'Asia';
+                if (hour >= 10 && hour < 15) return 'London';
+                if (hour >= 15 && hour <= 23) return 'New York';
+                return 'London'; // Fallback par défaut
             } catch (e) { return 'London'; }
         };
 
