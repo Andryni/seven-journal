@@ -22,23 +22,40 @@ export default async function handler(req, res) {
         // 1. Verify account exists - using a more direct approach
         const { data: account, error: accError } = await supabase
             .from('trading_accounts')
-            .select('user_id, id')
-            .eq('id', accountId.trim()) // Trim to avoid any hidden spaces
+            .select('user_id, id, initial_capital')
+            .eq('id', accountId.trim())
             .single();
 
         if (accError || !account) {
             console.error('Account search error:', accError, 'for ID:', accountId);
-            return res.status(404).json({
-                error: 'Account not found',
-                receivedId: accountId,
-                hint: 'Check if this ID exists in your Supabase trading_accounts table'
-            });
+            return res.status(404).json({ error: 'Account not found', receivedId: accountId });
         }
 
-        // 2. Helper to fix MQL5 date format (2024.03.04 10:00:00 -> 2024-03-04 10:00:00)
+        // 2. Update Account Metadata if provided (Broker, Balance, Currency)
+        if (req.body.account) {
+            const acc = req.body.account;
+            const updates = {
+                broker: acc.broker,
+                currency: acc.currency,
+                current_balance: parseFloat(acc.balance)
+            };
+
+            // Auto-fill initial capital if it's currently 0 or very small
+            if (!account.initial_capital || account.initial_capital < 1) {
+                updates.initial_capital = parseFloat(acc.balance);
+            }
+
+            await supabase
+                .from('trading_accounts')
+                .update(updates)
+                .eq('id', accountId.trim());
+        }
+
+        // 3. Helper to fix MQL5 date format (2024.03.04 10:00:00 -> 2024-03-04 10:00:00)
         const fixDate = (d) => typeof d === 'string' ? d.replaceAll('.', '-') : d;
 
-        // 3. Prepare trade data
+        // 4. Prepare trade data
+        const profit = parseFloat(trade.profit);
         const tradeData = {
             account_id: accountId,
             user_id: account.user_id,
@@ -47,17 +64,17 @@ export default async function handler(req, res) {
             entry_price: parseFloat(trade.entryPrice),
             exit_price: parseFloat(trade.exitPrice),
             lot_size: parseFloat(trade.volume),
-            result: parseFloat(trade.profit) >= 0 ? 'TP' : 'SL',
-            pnl: parseFloat(trade.profit),
+            result: profit > 0 ? 'TP' : (profit < 0 ? 'SL' : 'BE'),
+            pnl: profit,
             commission: parseFloat(trade.commission || 0),
-            net_pnl: (parseFloat(trade.profit) + parseFloat(trade.commission || 0) + parseFloat(trade.swap || 0)).toFixed(2),
+            net_pnl: (profit + parseFloat(trade.commission || 0) + parseFloat(trade.swap || 0)).toFixed(2),
             opened_at: fixDate(trade.openTime),
             closed_at: fixDate(trade.closeTime),
             external_id: trade.externalId,
-            tags: ['MT5-Direct']
+            tags: trade.isHistorical ? ['MT5-Import'] : ['MT5-Direct']
         };
 
-        // 4. Insert or Update trade
+        // 5. Insert or Update trade
         const { data, error } = await supabase
             .from('trades')
             .upsert(tradeData, { onConflict: 'external_id' })
@@ -65,7 +82,7 @@ export default async function handler(req, res) {
 
         if (error) {
             console.error('Supabase Error:', error);
-            return res.status(400).json({ error: `Database Error: ${error.message}`, details: error });
+            return res.status(400).json({ error: `Database Error: ${error.message}` });
         }
 
         return res.status(200).json({ success: true, trade: data[0] });
