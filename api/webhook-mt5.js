@@ -84,8 +84,6 @@ export default async function handler(req, res) {
                 entry_price: parseFloat(trade.entryPrice || 0),
                 exit_price: parseFloat(trade.exitPrice || 0),
                 lot_size: parseFloat(trade.volume || 0),
-                stop_loss: null,
-                take_profit: null,
                 result: profit > 0 ? 'TP' : (profit < 0 ? 'SL' : 'BE'),
                 pnl: profit,
                 commission: commission,
@@ -95,19 +93,14 @@ export default async function handler(req, res) {
                 external_id: trade.externalId || `mt5_t_${Date.now()}_${trade.symbol}`,
                 session: getSession(openedAt),
                 timeframe: trade.timeframe || 'M15',
-                strategy: 'MT5 Direct Sync',
+                strategy: 'MT5 Sync',
                 risk_planned: { mode: 'percent', value: 1 },
                 reward_planned: { mode: 'percent', value: 2 },
                 planned_rr: 2,
-                actual_rr: 0,
                 confluence: [],
                 checklist_snapshot: [],
-                notes: (trade.isHistorical === "true" || trade.isHistorical === true) ? 'Imported Historical Trade' : 'Live MT5 Sync',
-                tags: (trade.isHistorical === "true" || trade.isHistorical === true) ? ['MT5-Import'] : ['MT5-Live'],
-                setup_before_url: '',
-                setup_after_url: '',
-                emotion_before: 'Neutral',
-                emotion_after: 'Neutral'
+                notes: (trade.isHistorical === "true" || trade.isHistorical === true) ? 'MT5 History' : 'MT5 Live',
+                tags: (trade.isHistorical === "true" || trade.isHistorical === true) ? ['MT5-Import'] : ['MT5-Direct']
             };
 
             const { error: tError } = await supabase
