@@ -48,8 +48,9 @@ export default async function handler(req, res) {
         }
 
         const fixDate = (d) => {
-            if (typeof d !== 'string') return new Date().toISOString();
-            return d.replaceAll('.', '-').replace(' ', 'T');
+            if (typeof d !== 'string' || d === '') return new Date().toISOString();
+            // Convert "2024.03.04 10:00:00" to "2024-03-04T10:00:00Z"
+            return d.replaceAll('.', '-').replace(' ', 'T') + 'Z';
         };
 
         const getSession = (isoTime) => {
@@ -64,6 +65,7 @@ export default async function handler(req, res) {
 
         if (trade) {
             const opened_at = fixDate(trade.openTime);
+            const closed_at = fixDate(trade.closeTime || trade.openTime);
             const session = getSession(opened_at);
 
             const profitVal = parseFloat(trade.profit || 0);
@@ -74,8 +76,8 @@ export default async function handler(req, res) {
             const tradeData = {
                 account_id: accountId.trim(),
                 user_id: account.user_id,
-                pair: trade.symbol || 'UNKNOWN',
-                position: (trade.type || 'BUY').toUpperCase().substring(0, 4),
+                pair: (trade.symbol || 'UNKNOWN').substring(0, 10),
+                position: (trade.type || 'BUY').toUpperCase().includes('BUY') ? 'BUY' : 'SELL',
                 entry_price: parseFloat(trade.entryPrice || 0),
                 exit_price: parseFloat(trade.exitPrice || 0),
                 lot_size: parseFloat(trade.volume || 0),
@@ -84,7 +86,7 @@ export default async function handler(req, res) {
                 commission: Math.abs(commVal),
                 net_pnl: netPnLVal,
                 opened_at: opened_at,
-                closed_at: fixDate(trade.closeTime || trade.openTime),
+                closed_at: closed_at,
                 external_id: trade.externalId || `mt5_${accountId.trim()}_${trade.openTime}_${trade.symbol}`,
                 session: session,
                 timeframe: trade.timeframe || 'M15',
@@ -94,7 +96,7 @@ export default async function handler(req, res) {
                 planned_rr: 2,
                 confluence: [],
                 checklist_snapshot: [],
-                notes: trade.isHistorical ? 'Imported from MT5 History' : 'MT5 WebRequest sync',
+                notes: trade.isHistorical ? 'Imported from MT5 History' : 'Direct MT5 WebRequest sync',
                 tags: trade.isHistorical ? ['MT5-Import'] : ['MT5-Direct'],
                 setup_before_url: '',
                 setup_after_url: ''
@@ -105,15 +107,15 @@ export default async function handler(req, res) {
                 .upsert(tradeData, { onConflict: 'external_id' });
 
             if (tError) {
-                console.error('Supabase Error:', tError);
-                return res.status(400).json({ error: `Trade Sync Error: ${tError.message}` });
+                console.error('Database Sync error:', tError);
+                return res.status(400).json({ success: false, error: tError.message });
             }
-            return res.status(200).json({ success: true, message: 'Trade and Balance synced' });
+            return res.status(200).json({ success: true, message: 'Trade synced correctly' });
         }
 
-        return res.status(200).json({ success: true, message: 'Balance updated' });
+        return res.status(200).json({ success: true, message: 'Account updated' });
     } catch (err) {
-        console.error('Server Error:', err);
-        return res.status(500).json({ error: `Server Error: ${err.message}` });
+        console.error('Global Webhook Error:', err);
+        return res.status(500).json({ success: false, error: err.message });
     }
 }
