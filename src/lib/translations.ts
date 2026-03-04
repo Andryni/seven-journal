@@ -21,6 +21,7 @@ export const translations = {
             after: "After",
             saving: "Saving...",
             getStarted: "Get Started",
+            confirmDelete: "Are you sure you want to delete this?",
         },
         navigation: {
             home: "Home",
@@ -306,6 +307,7 @@ export const translations = {
             after: "Après",
             saving: "Enregistrement...",
             getStarted: "Commencer",
+            confirmDelete: "Êtes-vous sûr de vouloir supprimer ceci ?",
         },
         navigation: {
             home: "Accueil",
