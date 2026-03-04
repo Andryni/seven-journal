@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTradeStore } from '../store/useTradeStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useDebriefStore } from '../store/useDebriefStore';
-import { Languages, Download, AlertTriangle, User, Database, Wallet, Plus, CheckCircle, Check, Zap } from 'lucide-react';
+import { Languages, Download, AlertTriangle, User, Database, Wallet, Plus, CheckCircle, Check, Zap, Trash2 } from 'lucide-react';
 import { MetaApiForm } from '../components/MetaApiForm';
 import { Mql5WebhookForm } from '../components/Mql5WebhookForm';
 import jsPDF from 'jspdf';
@@ -28,6 +28,7 @@ export function Settings() {
     const logout = useAuthStore(state => state.logout);
     const accounts = useAuthStore(state => state.accounts);
     const setActiveAccount = useAuthStore(state => state.setActiveAccount);
+    const deleteAccount = useAuthStore(state => state.deleteAccount);
     const updateUser = useAuthStore(state => state.updateUser);
     const { t, lang } = useTranslation();
 
@@ -176,17 +177,35 @@ export function Settings() {
                                 </div>
                             ) : accounts.map(acc => {
                                 const isActive = currentUser?.activeAccountId === acc.id;
+                                const hasAccountTrades = trades.some(t => t.accountId === acc.id);
+                                const isMql5Active = !acc.metaapiAccountId && hasAccountTrades;
+
                                 return (
                                     <div key={acc.id}
                                         onClick={() => setActiveAccount(acc.id)}
-                                        className="p-5 rounded-2xl cursor-pointer transition-all duration-200 relative overflow-hidden"
+                                        className="p-5 rounded-2xl cursor-pointer transition-all duration-200 relative overflow-hidden group"
                                         style={{
                                             background: isActive ? 'rgba(124,58,237,0.1)' : 'rgba(255,255,255,0.02)',
                                             border: `1px solid ${isActive ? 'rgba(124,58,237,0.4)' : 'rgba(255,255,255,0.06)'}`,
                                             boxShadow: isActive ? '0 0 20px rgba(124,58,237,0.1)' : undefined,
                                         }}>
+
+                                        {/* Delete Button */}
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (window.confirm(t.common.confirmDelete || 'Delete this account and all associated data?')) {
+                                                    deleteAccount(acc.id);
+                                                }
+                                            }}
+                                            className="absolute top-4 right-4 p-2 rounded-lg bg-loss/10 text-loss opacity-0 group-hover:opacity-100 transition-opacity hover:bg-loss/20"
+                                            title="Delete Account"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+
                                         <div className="flex justify-between items-start mb-3">
-                                            <div>
+                                            <div className="pr-8">
                                                 <h4 className="font-bold text-white">{acc.name}</h4>
                                                 <p className="text-text-muted text-xs mt-0.5">{acc.broker} · {acc.type}</p>
                                             </div>
@@ -212,17 +231,17 @@ export function Settings() {
                                                         <span className="text-[9px] font-bold py-0.5 px-1.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center gap-1">
                                                             <Zap size={10} /> MetaApi Synced
                                                         </span>
-                                                    ) : (
+                                                    ) : isMql5Active ? (
                                                         <span className="text-[9px] font-bold py-0.5 px-1.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
                                                             <CheckCircle size={10} /> MQL5 Active
                                                         </span>
-                                                    )}
+                                                    ) : null}
                                                 </div>
                                             )}
                                         </div>
 
-                                        {/* Connection Section */}
-                                        {isActive && !acc.metaapiAccountId && (
+                                        {/* Connection Section - Only show if not synced */}
+                                        {isActive && !acc.metaapiAccountId && !hasAccountTrades && (
                                             <div className="mt-6 pt-6 border-t border-white/[0.05] space-y-6">
                                                 <div className="flex items-center gap-2 p-1 rounded-xl bg-white/5 border border-white/10 w-fit">
                                                     <button
