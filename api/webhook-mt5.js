@@ -91,9 +91,18 @@ export default async function handler(req, res) {
                 opened_at: openedAt,
                 closed_at: closedAt,
                 external_id: trade.externalId || `mt5_t_${Date.now()}_${trade.symbol}`,
+                session: getSession(openedAt),
                 timeframe: trade.timeframe || 'M15',
                 strategy: 'MT5 Sync',
-                notes: `Session: ${getSession(openedAt)} | ` + ((trade.isHistorical === "true" || trade.isHistorical === true) ? 'MT5 History' : 'MT5 Live'),
+                risk_planned: { mode: 'percent', value: 1 },
+                reward_planned: { mode: 'percent', value: 2 },
+                planned_rr: 2,
+                actual_rr: 0,
+                confluence: [],
+                checklist_snapshot: [],
+                emotion_before: 'Neutral',
+                emotion_after: 'Neutral',
+                notes: (trade.isHistorical === "true" || trade.isHistorical === true) ? 'MT5 History' : 'MT5 Live',
                 tags: [(trade.isHistorical === "true" || trade.isHistorical === true) ? 'MT5-Import' : 'MT5-Direct', getSession(openedAt)]
             };
 
