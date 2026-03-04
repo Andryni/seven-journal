@@ -94,11 +94,6 @@ export default async function handler(req, res) {
                 session: getSession(openedAt),
                 timeframe: trade.timeframe || 'M15',
                 strategy: 'MT5 Sync',
-                risk_planned: { mode: 'percent', value: 1 },
-                reward_planned: { mode: 'percent', value: 2 },
-                planned_rr: 2,
-                confluence: [],
-                checklist_snapshot: [],
                 notes: (trade.isHistorical === "true" || trade.isHistorical === true) ? 'MT5 History' : 'MT5 Live',
                 tags: (trade.isHistorical === "true" || trade.isHistorical === true) ? ['MT5-Import'] : ['MT5-Direct']
             };
