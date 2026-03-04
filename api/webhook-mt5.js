@@ -58,43 +58,48 @@ export default async function handler(req, res) {
             return 'Off Session';
         };
 
-        const opened_at = fixDate(trade.openTime);
-        const session = getSession(opened_at);
+        if (trade) {
+            const opened_at = fixDate(trade.openTime);
+            const session = getSession(opened_at);
 
-        // 5. Prepare trade data
-        const profit = parseFloat(trade.profit);
-        const tradeData = {
-            account_id: accountId,
-            user_id: account.user_id,
-            pair: trade.symbol,
-            position: trade.type.toUpperCase(),
-            entry_price: parseFloat(trade.entryPrice),
-            exit_price: parseFloat(trade.exitPrice),
-            lot_size: parseFloat(trade.volume),
-            result: profit > 0 ? 'TP' : (profit < 0 ? 'SL' : 'BE'),
-            pnl: profit,
-            commission: parseFloat(trade.commission || 0),
-            net_pnl: (profit + parseFloat(trade.commission || 0) + parseFloat(trade.swap || 0)).toFixed(2),
-            opened_at: opened_at,
-            closed_at: fixDate(trade.closeTime),
-            external_id: trade.externalId,
-            session: session,
-            timeframe: trade.timeframe || 'M15', // Default to M15 if not provided
-            tags: trade.isHistorical ? ['MT5-Import'] : ['MT5-Direct']
-        };
+            // 5. Prepare trade data
+            const profitValue = parseFloat(trade.profit || 0);
+            const commValue = parseFloat(trade.commission || 0);
+            const swapValue = parseFloat(trade.swap || 0);
 
-        // 5. Insert or Update trade
-        const { data, error } = await supabase
-            .from('trades')
-            .upsert(tradeData, { onConflict: 'external_id' })
-            .select();
+            const tradeData = {
+                account_id: accountId.trim(),
+                user_id: account.user_id,
+                pair: trade.symbol || 'UNKNOWN',
+                position: (trade.type || 'BUY').toUpperCase(),
+                entry_price: parseFloat(trade.entryPrice || 0),
+                exit_price: parseFloat(trade.exitPrice || 0),
+                lot_size: parseFloat(trade.volume || 0),
+                result: profitValue > 0 ? 'TP' : (profitValue < 0 ? 'SL' : 'BE'),
+                pnl: profitValue,
+                commission: commValue,
+                net_pnl: (profitValue + commValue + swapValue).toFixed(2),
+                opened_at: opened_at,
+                closed_at: fixDate(trade.closeTime || opened_at),
+                external_id: trade.externalId,
+                session: session,
+                timeframe: trade.timeframe || 'M15',
+                tags: trade.isHistorical ? ['MT5-Import'] : ['MT5-Direct']
+            };
 
-        if (error) {
-            console.error('Supabase Error:', error);
-            return res.status(400).json({ error: `Database Error: ${error.message}` });
+            const { data: tData, error: tError } = await supabase
+                .from('trades')
+                .upsert(tradeData, { onConflict: 'external_id' })
+                .select();
+
+            if (tError) {
+                console.error('Supabase Error:', tError);
+                return res.status(400).json({ error: `Database Error: ${tError.message}` });
+            }
+            return res.status(200).json({ success: true, trade: tData[0] });
         }
 
-        return res.status(200).json({ success: true, trade: data[0] });
+        return res.status(200).json({ success: true, message: 'Balance updated' });
     } catch (err) {
         return res.status(400).json({ error: `Server Error: ${err.message}` });
     }
