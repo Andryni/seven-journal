@@ -91,11 +91,10 @@ export default async function handler(req, res) {
                 opened_at: openedAt,
                 closed_at: closedAt,
                 external_id: trade.externalId || `mt5_t_${Date.now()}_${trade.symbol}`,
-                session: getSession(openedAt),
                 timeframe: trade.timeframe || 'M15',
                 strategy: 'MT5 Sync',
-                notes: (trade.isHistorical === "true" || trade.isHistorical === true) ? 'MT5 History' : 'MT5 Live',
-                tags: (trade.isHistorical === "true" || trade.isHistorical === true) ? ['MT5-Import'] : ['MT5-Direct']
+                notes: `Session: ${getSession(openedAt)} | ` + ((trade.isHistorical === "true" || trade.isHistorical === true) ? 'MT5 History' : 'MT5 Live'),
+                tags: [(trade.isHistorical === "true" || trade.isHistorical === true) ? 'MT5-Import' : 'MT5-Direct', getSession(openedAt)]
             };
 
             const { error: tError } = await supabase
