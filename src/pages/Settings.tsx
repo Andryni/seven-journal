@@ -423,6 +423,9 @@ const AccountForm = ({ onCreated }: { onCreated: () => void }) => {
                     <><Plus size={15} /> {t.settings.createAccount}</>
                 )}
             </button>
+            <p className="text-[10px] text-center text-text-muted mt-4 font-mono opacity-50 uppercase tracking-widest">
+                v1.2.1-MQL5-INTEGRATION
+            </p>
         </form>
     );
 };
