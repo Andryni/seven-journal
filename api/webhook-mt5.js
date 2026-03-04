@@ -5,10 +5,10 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { accountId, trade } = req.body;
+    const { accountId, trade, account: accountMetadata } = req.body;
 
-    if (!accountId || !trade) {
-        return res.status(400).json({ error: 'Missing accountId or trade data' });
+    if (!accountId || (!trade && !accountMetadata)) {
+        return res.status(400).json({ error: 'Missing accountId, trade or account data' });
     }
 
     const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim();
