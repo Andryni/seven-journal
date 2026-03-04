@@ -141,7 +141,8 @@ export function LandingPage() {
                 currentBalance: 128400,
                 currency: 'USD',
                 type: 'Demo',
-                broker: 'Seven Broker'
+                broker: 'Seven Broker',
+                connectionMethod: 'mql5'
             });
             if (accError) {
                 console.error('Demo account creation failed:', accError);

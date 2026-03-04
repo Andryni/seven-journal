@@ -44,7 +44,8 @@ export function MetaApiForm({ accountId, onConnected }: { accountId?: string, on
                     currentBalance: parseFloat(initialCapital),
                     currency: 'USD',
                     type: 'Propfirm',
-                    broker: server
+                    broker: server,
+                    connectionMethod: 'metaapi'
                 });
                 if (accError) throw new Error(`Failed to create account: ${accError.message}`);
 
