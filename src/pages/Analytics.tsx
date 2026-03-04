@@ -120,6 +120,28 @@ const TOOLTIP_STYLE = {
 };
 
 /* ─────────────────────────────────────────────────────────────
+   Custom Asset Label (Handles positive/negative bars)
+   ───────────────────────────────────────────────────────────── */
+const AssetLabel = (props: any) => {
+    const { x, y, width, height, payload } = props;
+    if (!payload) return null;
+    const isPositive = payload.pnl >= 0;
+    return (
+        <text
+            x={x + width / 2}
+            y={isPositive ? y - 10 : y + height + 14}
+            fill="rgba(255,255,255,0.85)"
+            textAnchor="middle"
+            fontSize={10}
+            fontFamily="JetBrains Mono"
+            fontWeight={700}
+        >
+            {payload.name}
+        </text>
+    );
+};
+
+/* ─────────────────────────────────────────────────────────────
    Main Component
 ───────────────────────────────────────────────────────────── */
 export function Analytics() {
@@ -391,7 +413,7 @@ export function Analytics() {
                     </CardHeader>
                     <CardContent className="p-5 pt-2">
                         <ChartContainer config={assetConfig} className="min-h-[260px] w-full">
-                            <BarChart accessibilityLayer data={stats.pairData} margin={{ top: 30, right: 8, left: 0, bottom: 0 }}>
+                            <BarChart accessibilityLayer data={stats.pairData} margin={{ top: 30, right: 8, left: 0, bottom: 25 }}>
                                 <defs>
                                     <linearGradient id="assetWin" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
@@ -408,7 +430,7 @@ export function Analytics() {
                                 <ReferenceLine y={0} stroke="rgba(255,255,255,0.12)" strokeDasharray="3 3" />
                                 <ChartTooltip cursor={{ fill: 'rgba(255,255,255,0.02)' }} content={<ChartTooltipContent hideLabel hideIndicator className="glass-card border-primary/20" />} />
                                 <Bar dataKey="pnl" radius={6}>
-                                    <LabelList position="top" dataKey="name" fill="rgba(255,255,255,0.75)" fontSize={11} fontFamily="JetBrains Mono" fontWeight={700} offset={10} />
+                                    <LabelList dataKey="name" content={<AssetLabel />} />
                                     {stats.pairData.map(item => (
                                         <Cell key={item.name}
                                             fill={item.pnl > 0 ? "url(#assetWin)" : "url(#assetLoss)"}
