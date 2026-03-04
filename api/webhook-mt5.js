@@ -47,69 +47,73 @@ export default async function handler(req, res) {
                 .eq('id', accountId.trim());
         }
 
-        // 4. Time helpers
-        const fixDate = (d) => typeof d === 'string' ? d.replaceAll('.', '-') : d;
+        const fixDate = (d) => {
+            if (typeof d !== 'string') return new Date().toISOString();
+            return d.replaceAll('.', '-').replace(' ', 'T');
+        };
+
         const getSession = (isoTime) => {
-            const hour = new Date(isoTime).getUTCHours();
-            if (hour >= 0 && hour < 8) return 'Asia';
-            if (hour >= 8 && hour < 14) return 'London';
-            if (hour >= 13 && hour < 21) return 'New York';
-            if ((hour >= 13 && hour < 14)) return 'Overlap';
-            return 'Off Session';
+            try {
+                const hour = new Date(isoTime).getUTCHours();
+                if (hour >= 0 && hour < 8) return 'Asia';
+                if (hour >= 8 && hour < 14) return 'London';
+                if (hour >= 13 && hour < 21) return 'New York';
+                return 'Off Session';
+            } catch (e) { return 'London'; }
         };
 
         if (trade) {
             const opened_at = fixDate(trade.openTime);
             const session = getSession(opened_at);
 
-            // 5. Prepare trade data
-            const profitValue = parseFloat(trade.profit || 0);
-            const commValue = parseFloat(trade.commission || 0);
-            const swapValue = parseFloat(trade.swap || 0);
+            const profitVal = parseFloat(trade.profit || 0);
+            const commVal = parseFloat(trade.commission || 0);
+            const swapVal = parseFloat(trade.swap || 0);
+            const netPnLVal = parseFloat((profitVal + commVal + swapVal).toFixed(2));
 
             const tradeData = {
                 account_id: accountId.trim(),
                 user_id: account.user_id,
                 pair: trade.symbol || 'UNKNOWN',
-                position: (trade.type || 'BUY').toUpperCase(),
+                position: (trade.type || 'BUY').toUpperCase().substring(0, 4),
                 entry_price: parseFloat(trade.entryPrice || 0),
                 exit_price: parseFloat(trade.exitPrice || 0),
                 lot_size: parseFloat(trade.volume || 0),
-                result: profitValue > 0 ? 'TP' : (profitValue < 0 ? 'SL' : 'BE'),
-                pnl: profitValue,
-                commission: commValue,
-                net_pnl: (profitValue + commValue + swapValue).toFixed(2),
+                result: profitVal > 0 ? 'TP' : (profitVal < 0 ? 'SL' : 'BE'),
+                pnl: profitVal,
+                commission: Math.abs(commVal),
+                net_pnl: netPnLVal,
                 opened_at: opened_at,
-                closed_at: fixDate(trade.closeTime || opened_at),
+                closed_at: fixDate(trade.closeTime || trade.openTime),
                 external_id: trade.externalId || `mt5_${accountId.trim()}_${trade.openTime}_${trade.symbol}`,
                 session: session,
                 timeframe: trade.timeframe || 'M15',
-                tags: trade.isHistorical ? ['MT5-Import'] : ['MT5-Direct'],
-                // Add missing required fields for the database
+                strategy: 'MT5-Sync',
                 risk_planned: { mode: 'percent', value: 1 },
                 reward_planned: { mode: 'percent', value: 2 },
                 planned_rr: 2,
                 confluence: [],
                 checklist_snapshot: [],
-                notes: trade.isHistorical ? 'Auto-imported historical trade' : 'Auto-synced from MT5',
+                notes: trade.isHistorical ? 'Imported from MT5 History' : 'MT5 WebRequest sync',
+                tags: trade.isHistorical ? ['MT5-Import'] : ['MT5-Direct'],
                 setup_before_url: '',
                 setup_after_url: ''
             };
 
-            const { data: tData, error: tError } = await supabase
+            const { error: tError } = await supabase
                 .from('trades')
-                .upsert(tradeData, { onConflict: 'external_id' })
-                .select();
+                .upsert(tradeData, { onConflict: 'external_id' });
 
             if (tError) {
                 console.error('Supabase Error:', tError);
-                return res.status(400).json({ error: `Database Error: ${tError.message}` });
+                return res.status(400).json({ error: `Trade Sync Error: ${tError.message}` });
             }
-            return res.status(200).json({ success: true, trade: tData[0] });
+            return res.status(200).json({ success: true, message: 'Trade and Balance synced' });
         }
 
         return res.status(200).json({ success: true, message: 'Balance updated' });
     } catch (err) {
-        return res.status(400).json({ error: `Server Error: ${err.message}` });
+        console.error('Server Error:', err);
+        return res.status(500).json({ error: `Server Error: ${err.message}` });
     }
 }
