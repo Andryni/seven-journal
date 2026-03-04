@@ -208,13 +208,13 @@ export function Settings() {
                                                     <span className="text-[10px] font-bold text-profit flex items-center gap-1">
                                                         <span className="w-1.5 h-1.5 rounded-full bg-profit animate-blink" /> {t.settings.active}
                                                     </span>
-                                                    {acc.connectionMethod === 'metaapi' ? (
-                                                        <span className={`text-[9px] font-bold py-0.5 px-1.5 rounded flex items-center gap-1 ${acc.metaapiAccountId ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
-                                                            <Zap size={10} /> {acc.metaapiAccountId ? 'Synced' : 'Pending'}
+                                                    {acc.metaapiAccountId ? (
+                                                        <span className="text-[9px] font-bold py-0.5 px-1.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center gap-1">
+                                                            <Zap size={10} /> MetaApi Synced
                                                         </span>
                                                     ) : (
                                                         <span className="text-[9px] font-bold py-0.5 px-1.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                                                            <Check size={10} /> MQL5 Active
+                                                            <CheckCircle size={10} /> MQL5 Active
                                                         </span>
                                                     )}
                                                 </div>
@@ -222,7 +222,7 @@ export function Settings() {
                                         </div>
 
                                         {/* Connection Section */}
-                                        {isActive && ((acc.connectionMethod === 'metaapi' && !acc.metaapiAccountId) || (acc.connectionMethod === 'mql5')) && (
+                                        {isActive && !acc.metaapiAccountId && (
                                             <div className="mt-6 pt-6 border-t border-white/[0.05] space-y-6">
                                                 <div className="flex items-center gap-2 p-1 rounded-xl bg-white/5 border border-white/10 w-fit">
                                                     <button
