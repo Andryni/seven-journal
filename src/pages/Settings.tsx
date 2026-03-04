@@ -229,6 +229,10 @@ export function Settings() {
                                                         <span className="text-[9px] font-bold py-0.5 px-1.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center gap-1">
                                                             <Zap size={10} /> MetaApi Synced
                                                         </span>
+                                                    ) : acc.connectionMethod === 'manual' ? (
+                                                        <span className="text-[9px] font-bold py-0.5 px-1.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
+                                                            <User size={10} /> Manual Entry
+                                                        </span>
                                                     ) : isMql5Active ? (
                                                         <span className="text-[9px] font-bold py-0.5 px-1.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
                                                             <CheckCircle size={10} /> MQL5 Active
@@ -238,8 +242,8 @@ export function Settings() {
                                             )}
                                         </div>
 
-                                        {/* Connection Section - Only show if not synced */}
-                                        {isActive && !acc.metaapiAccountId && !hasAccountTrades && (
+                                        {/* Connection Section - Only show if not synced and not manual */}
+                                        {isActive && !acc.metaapiAccountId && acc.connectionMethod !== 'manual' && !hasAccountTrades && (
                                             <div className="mt-6 pt-6 border-t border-white/[0.05] space-y-6">
                                                 <div className="flex items-center gap-2 p-1 rounded-xl bg-white/5 border border-white/10 w-fit">
                                                     <button
@@ -355,7 +359,7 @@ const AccountForm = ({ onCreated }: { onCreated: () => void }) => {
     const [broker, setBroker] = useState('');
     const [type, setType] = useState<'Demo' | 'Real' | 'Propfirm' | 'Funded'>('Demo');
     const [currency, setCurrency] = useState<'USD' | 'EUR' | 'GBP' | 'CHF' | 'JPY' | 'CAD' | 'AUD'>('USD');
-    const [connectionMethod, setConnectionMethod] = useState<'metaapi' | 'mql5'>('mql5');
+    const [connectionMethod, setConnectionMethod] = useState<'metaapi' | 'mql5' | 'manual'>('manual');
     const [created, setCreated] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -383,7 +387,14 @@ const AccountForm = ({ onCreated }: { onCreated: () => void }) => {
 
             <div>
                 <label className="section-label mb-2 block">Connection Method</label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setConnectionMethod('manual')}
+                        className={`p-2 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all ${connectionMethod === 'manual' ? 'bg-amber-500/20 border-amber-500/50 text-amber-400' : 'bg-white/5 border-white/10 text-text-muted hover:text-white'}`}
+                    >
+                        Manual
+                    </button>
                     <button
                         type="button"
                         onClick={() => setConnectionMethod('mql5')}
