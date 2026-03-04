@@ -54,15 +54,23 @@ export default async function handler(req, res) {
             return str.replaceAll('.', '-').replace(' ', 'T') + 'Z';
         };
 
-        const getSession = (isoDate) => {
+        const getSession = (isoDate, gmtOffset = 3) => {
             try {
-                // On extrait l'heure directement du texte envoyé par MT5 (qui est en GMT+3)
-                const hour = parseInt(isoDate.split('T')[1].split(':')[0]);
+                // 1. On extrait l'heure brute du broker
+                const brokerHour = parseInt(isoDate.split('T')[1].split(':')[0]);
 
-                if (hour >= 0 && hour < 10) return 'Asia';
-                if (hour >= 10 && hour < 15) return 'London';
-                if (hour >= 15 && hour <= 23) return 'New York';
-                return 'London'; // Fallback par défaut
+                // 2. On convertit en UTC (Heure Universelle)
+                // Si Broker est GMT+3, UTC = Broker - 3
+                let utcHour = (brokerHour - gmtOffset);
+                if (utcHour < 0) utcHour += 24;
+                if (utcHour >= 24) utcHour -= 24;
+
+                // 3. Sessions Universelles (en UTC)
+                // London Open: 08:00 UTC | NY Open: 13:00 UTC | Tokyo Open: 00:00 UTC
+                if (utcHour >= 0 && utcHour < 7) return 'Asia';
+                if (utcHour >= 7 && utcHour < 12) return 'London';
+                if (utcHour >= 12 && utcHour < 21) return 'New York';
+                return 'London';
             } catch (e) { return 'London'; }
         };
 
