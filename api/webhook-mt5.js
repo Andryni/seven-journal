@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     try {
-        // 1. Verify account exists and get user_id
+        // 1. Verify account exists
         const { data: account, error: accError } = await supabase
             .from('trading_accounts')
             .select('user_id')
@@ -25,39 +25,44 @@ export default async function handler(req, res) {
             .single();
 
         if (accError || !account) {
-            return res.status(404).json({ error: 'Account not found' });
+            return res.status(404).json({ error: 'Account not found. Verify your Account ID.' });
         }
 
-        // 2. Prepare trade data
+        // 2. Helper to fix MQL5 date format (2024.03.04 10:00:00 -> 2024-03-04 10:00:00)
+        const fixDate = (d) => typeof d === 'string' ? d.replaceAll('.', '-') : d;
+
+        // 3. Prepare trade data
         const tradeData = {
             account_id: accountId,
             user_id: account.user_id,
             pair: trade.symbol,
             position: trade.type.toUpperCase(),
-            entry_price: trade.entryPrice,
-            exit_price: trade.exitPrice,
-            lot_size: trade.volume,
-            result: trade.profit >= 0 ? 'TP' : 'SL',
-            pnl: trade.profit,
-            commission: trade.commission || 0,
-            net_pnl: (trade.profit + (trade.commission || 0) + (trade.swap || 0)).toFixed(2),
-            opened_at: trade.openTime,
-            closed_at: trade.closeTime,
+            entry_price: parseFloat(trade.entryPrice),
+            exit_price: parseFloat(trade.exitPrice),
+            lot_size: parseFloat(trade.volume),
+            result: parseFloat(trade.profit) >= 0 ? 'TP' : 'SL',
+            pnl: parseFloat(trade.profit),
+            commission: parseFloat(trade.commission || 0),
+            net_pnl: (parseFloat(trade.profit) + parseFloat(trade.commission || 0) + parseFloat(trade.swap || 0)).toFixed(2),
+            opened_at: fixDate(trade.openTime),
+            closed_at: fixDate(trade.closeTime),
             external_id: trade.externalId,
-            tags: ['MT5-Direct', ...(trade.tags || [])]
+            tags: ['MT5-Direct']
         };
 
-        // 3. Insert or Update trade
+        // 4. Insert or Update trade
         const { data, error } = await supabase
             .from('trades')
             .upsert(tradeData, { onConflict: 'external_id' })
             .select();
 
-        if (error) throw error;
+        if (error) {
+            console.error('Supabase Error:', error);
+            return res.status(400).json({ error: `Database Error: ${error.message}`, details: error });
+        }
 
         return res.status(200).json({ success: true, trade: data[0] });
     } catch (err) {
-        console.error('Webhook Error:', err);
-        return res.status(500).json({ error: err.message });
+        return res.status(400).json({ error: `Server Error: ${err.message}` });
     }
 }
