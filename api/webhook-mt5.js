@@ -5,7 +5,8 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { accountId, trade, account: accountMetadata } = req.body;
+    const { accountId, trade, account: accountMetadata, gmtOffset } = req.body;
+    const currentOffset = gmtOffset !== undefined ? parseInt(gmtOffset) : 3;
 
     if (!accountId || (!trade && !accountMetadata)) {
         return res.status(400).json({ error: 'Missing accountId, trade or account data' });
@@ -101,7 +102,7 @@ export default async function handler(req, res) {
                 opened_at: openedAt,
                 closed_at: closedAt,
                 external_id: trade.externalId || `mt5_t_${Date.now()}_${trade.symbol}`,
-                session: getSession(openedAt),
+                session: getSession(openedAt, currentOffset),
                 timeframe: trade.timeframe || 'M15',
                 strategy: 'MT5 Sync',
                 risk_planned: { mode: 'percent', value: 1 },
@@ -113,7 +114,7 @@ export default async function handler(req, res) {
                 emotion_before: 'Neutral',
                 emotion_after: 'Neutral',
                 notes: (trade.isHistorical === "true" || trade.isHistorical === true) ? 'MT5 History' : 'MT5 Live',
-                tags: [(trade.isHistorical === "true" || trade.isHistorical === true) ? 'MT5-Import' : 'MT5-Direct', getSession(openedAt)]
+                tags: [(trade.isHistorical === "true" || trade.isHistorical === true) ? 'MT5-Import' : 'MT5-Direct', getSession(openedAt, currentOffset)]
             };
 
             const { error: tError } = await supabase
