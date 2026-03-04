@@ -47,15 +47,15 @@ export default async function handler(req, res) {
                 .eq('id', accountId.trim());
         }
 
-        const fixDate = (d) => {
-            if (typeof d !== 'string' || d === '') return new Date().toISOString();
-            // Convert "2024.03.04 10:00:00" to "2024-03-04T10:00:00Z"
-            return d.replaceAll('.', '-').replace(' ', 'T') + 'Z';
+        // Helper pour les dates : MT5 envoie "2024.03.24 10:00:00" -> On veut "2024-03-24T10:00:00Z"
+        const formatMT5Date = (str) => {
+            if (!str || typeof str !== 'string') return new Date().toISOString();
+            return str.replaceAll('.', '-').replace(' ', 'T') + 'Z';
         };
 
-        const getSession = (isoTime) => {
+        const getSession = (isoDate) => {
             try {
-                const hour = new Date(isoTime).getUTCHours();
+                const hour = new Date(isoDate).getUTCHours();
                 if (hour >= 0 && hour < 8) return 'Asia';
                 if (hour >= 8 && hour < 14) return 'London';
                 if (hour >= 13 && hour < 21) return 'New York';
@@ -63,43 +63,41 @@ export default async function handler(req, res) {
             } catch (e) { return 'London'; }
         };
 
-        if (trade) {
-            const opened_at = fixDate(trade.openTime);
-            const closed_at = fixDate(trade.closeTime || trade.openTime);
-            const session = getSession(opened_at);
+        let tradeStatus = "no_trade_data";
 
-            const profitVal = parseFloat(trade.profit || 0);
-            const commVal = parseFloat(trade.commission || 0);
-            const swapVal = parseFloat(trade.swap || 0);
-            const netPnLVal = parseFloat((profitVal + commVal + swapVal).toFixed(2));
+        if (trade) {
+            console.log('Synchronizing trade:', trade.symbol, trade.externalId);
+            const openedAt = formatMT5Date(trade.openTime);
+            const closedAt = formatMT5Date(trade.closeTime || trade.openTime);
+            const profit = parseFloat(trade.profit || 0);
+            const commission = Math.abs(parseFloat(trade.commission || 0));
+            const swap = parseFloat(trade.swap || 0);
 
             const tradeData = {
                 account_id: accountId.trim(),
                 user_id: account.user_id,
-                pair: (trade.symbol || 'UNKNOWN').substring(0, 10),
+                pair: (trade.symbol || 'UNKNOWN').substring(0, 12),
                 position: (trade.type || 'BUY').toUpperCase().includes('BUY') ? 'BUY' : 'SELL',
                 entry_price: parseFloat(trade.entryPrice || 0),
                 exit_price: parseFloat(trade.exitPrice || 0),
                 lot_size: parseFloat(trade.volume || 0),
-                result: profitVal > 0 ? 'TP' : (profitVal < 0 ? 'SL' : 'BE'),
-                pnl: profitVal,
-                commission: Math.abs(commVal),
-                net_pnl: netPnLVal,
-                opened_at: opened_at,
-                closed_at: closed_at,
-                external_id: trade.externalId || `mt5_${accountId.trim()}_${trade.openTime}_${trade.symbol}`,
-                session: session,
+                result: profit > 0 ? 'TP' : (profit < 0 ? 'SL' : 'BE'),
+                pnl: profit,
+                commission: commission,
+                net_pnl: parseFloat((profit + swap - commission).toFixed(2)),
+                opened_at: openedAt,
+                closed_at: closedAt,
+                external_id: trade.externalId || `mt5_${Date.now()}_${trade.symbol}`,
+                session: getSession(openedAt),
                 timeframe: trade.timeframe || 'M15',
-                strategy: 'MT5-Sync',
+                strategy: 'MT5 Sync',
                 risk_planned: { mode: 'percent', value: 1 },
                 reward_planned: { mode: 'percent', value: 2 },
                 planned_rr: 2,
                 confluence: [],
                 checklist_snapshot: [],
-                notes: trade.isHistorical ? 'Imported from MT5 History' : 'Direct MT5 WebRequest sync',
-                tags: trade.isHistorical ? ['MT5-Import'] : ['MT5-Direct'],
-                setup_before_url: '',
-                setup_after_url: ''
+                notes: trade.isHistorical === "true" || trade.isHistorical === true ? 'MT5 History Import' : 'MT5 Real-time Sync',
+                tags: trade.isHistorical === "true" || trade.isHistorical === true ? ['MT5-Import'] : ['MT5-Direct']
             };
 
             const { error: tError } = await supabase
@@ -107,15 +105,21 @@ export default async function handler(req, res) {
                 .upsert(tradeData, { onConflict: 'external_id' });
 
             if (tError) {
-                console.error('Database Sync error:', tError);
-                return res.status(400).json({ success: false, error: tError.message });
+                console.error('Supabase Trade Error:', tError);
+                tradeStatus = `error: ${tError.message}`;
+            } else {
+                tradeStatus = "success";
             }
-            return res.status(200).json({ success: true, message: 'Trade synced correctly' });
         }
 
-        return res.status(200).json({ success: true, message: 'Account updated' });
+        return res.status(200).json({
+            success: true,
+            account_updated: !!req.body.account,
+            trade_synced: tradeStatus
+        });
+
     } catch (err) {
-        console.error('Global Webhook Error:', err);
-        return res.status(500).json({ success: false, error: err.message });
+        console.error('Webhook Global Error:', err);
+        return res.status(500).json({ error: err.message });
     }
 }
