@@ -123,20 +123,25 @@ const TOOLTIP_STYLE = {
    Custom Asset Label (Handles positive/negative bars)
    ───────────────────────────────────────────────────────────── */
 const AssetLabel = (props: any) => {
-    const { x, y, width, height, payload } = props;
-    if (!payload) return null;
-    const isPositive = payload.pnl >= 0;
+    const { x, y, width, height, value, payload } = props;
+    if (!value) return null;
+
+    // On vérifie si le pnl est positif ou négatif pour le placement
+    const pnl = payload?.pnl ?? 0;
+    const isPositive = pnl >= 0;
+
     return (
         <text
             x={x + width / 2}
-            y={isPositive ? y - 10 : y + height + 14}
-            fill="rgba(255,255,255,0.85)"
+            y={isPositive ? y - 12 : y + height + 16}
+            fill="white"
+            fillOpacity={0.9}
             textAnchor="middle"
             fontSize={10}
             fontFamily="JetBrains Mono"
-            fontWeight={700}
+            fontWeight={800}
         >
-            {payload.name}
+            {value}
         </text>
     );
 };
