@@ -81,10 +81,19 @@ export default async function handler(req, res) {
                 net_pnl: (profitValue + commValue + swapValue).toFixed(2),
                 opened_at: opened_at,
                 closed_at: fixDate(trade.closeTime || opened_at),
-                external_id: trade.externalId,
+                external_id: trade.externalId || `mt5_${accountId.trim()}_${trade.openTime}_${trade.symbol}`,
                 session: session,
                 timeframe: trade.timeframe || 'M15',
-                tags: trade.isHistorical ? ['MT5-Import'] : ['MT5-Direct']
+                tags: trade.isHistorical ? ['MT5-Import'] : ['MT5-Direct'],
+                // Add missing required fields for the database
+                risk_planned: { mode: 'percent', value: 1 },
+                reward_planned: { mode: 'percent', value: 2 },
+                planned_rr: 2,
+                confluence: [],
+                checklist_snapshot: [],
+                notes: trade.isHistorical ? 'Auto-imported historical trade' : 'Auto-synced from MT5',
+                setup_before_url: '',
+                setup_after_url: ''
             };
 
             const { data: tData, error: tError } = await supabase
