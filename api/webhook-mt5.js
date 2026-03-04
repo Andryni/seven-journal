@@ -47,9 +47,10 @@ export default async function handler(req, res) {
                 .eq('id', accountId.trim());
         }
 
-        // Helper pour les dates : MT5 envoie "2024.03.24 10:00:00" -> On veut "2024-03-24T10:00:00Z"
+        // Helper ultra-robuste pour les dates de MT5
         const formatMT5Date = (str) => {
-            if (!str || typeof str !== 'string') return new Date().toISOString();
+            if (!str || typeof str !== 'string' || str.length < 10) return new Date().toISOString();
+            // "2024.03.24 10:00:00" -> "2024-03-24T10:00:00Z"
             return str.replaceAll('.', '-').replace(' ', 'T') + 'Z';
         };
 
@@ -66,12 +67,14 @@ export default async function handler(req, res) {
         let tradeStatus = "no_trade_data";
 
         if (trade) {
-            console.log('Synchronizing trade:', trade.symbol, trade.externalId);
+            console.log('Syncing Trade for Account:', accountId, 'Symbol:', trade.symbol);
+
             const openedAt = formatMT5Date(trade.openTime);
             const closedAt = formatMT5Date(trade.closeTime || trade.openTime);
             const profit = parseFloat(trade.profit || 0);
             const commission = Math.abs(parseFloat(trade.commission || 0));
             const swap = parseFloat(trade.swap || 0);
+            const netPnL = parseFloat((profit + swap - commission).toFixed(2));
 
             const tradeData = {
                 account_id: accountId.trim(),
@@ -81,23 +84,30 @@ export default async function handler(req, res) {
                 entry_price: parseFloat(trade.entryPrice || 0),
                 exit_price: parseFloat(trade.exitPrice || 0),
                 lot_size: parseFloat(trade.volume || 0),
+                stop_loss: null,
+                take_profit: null,
                 result: profit > 0 ? 'TP' : (profit < 0 ? 'SL' : 'BE'),
                 pnl: profit,
                 commission: commission,
-                net_pnl: parseFloat((profit + swap - commission).toFixed(2)),
+                net_pnl: netPnL,
                 opened_at: openedAt,
                 closed_at: closedAt,
-                external_id: trade.externalId || `mt5_${Date.now()}_${trade.symbol}`,
+                external_id: trade.externalId || `mt5_t_${Date.now()}_${trade.symbol}`,
                 session: getSession(openedAt),
                 timeframe: trade.timeframe || 'M15',
-                strategy: 'MT5 Sync',
+                strategy: 'MT5 Direct Sync',
                 risk_planned: { mode: 'percent', value: 1 },
                 reward_planned: { mode: 'percent', value: 2 },
                 planned_rr: 2,
+                actual_rr: 0,
                 confluence: [],
                 checklist_snapshot: [],
-                notes: trade.isHistorical === "true" || trade.isHistorical === true ? 'MT5 History Import' : 'MT5 Real-time Sync',
-                tags: trade.isHistorical === "true" || trade.isHistorical === true ? ['MT5-Import'] : ['MT5-Direct']
+                notes: (trade.isHistorical === "true" || trade.isHistorical === true) ? 'Imported Historical Trade' : 'Live MT5 Sync',
+                tags: (trade.isHistorical === "true" || trade.isHistorical === true) ? ['MT5-Import'] : ['MT5-Live'],
+                setup_before_url: '',
+                setup_after_url: '',
+                emotion_before: 'Neutral',
+                emotion_after: 'Neutral'
             };
 
             const { error: tError } = await supabase
@@ -105,7 +115,7 @@ export default async function handler(req, res) {
                 .upsert(tradeData, { onConflict: 'external_id' });
 
             if (tError) {
-                console.error('Supabase Trade Error:', tError);
+                console.error('CRITICAL: Supabase Trade Error:', tError);
                 tradeStatus = `error: ${tError.message}`;
             } else {
                 tradeStatus = "success";
@@ -114,12 +124,12 @@ export default async function handler(req, res) {
 
         return res.status(200).json({
             success: true,
-            account_updated: !!req.body.account,
+            account_synced: true,
             trade_synced: tradeStatus
         });
 
     } catch (err) {
-        console.error('Webhook Global Error:', err);
+        console.error('WEBHOOK ERROR:', err.message);
         return res.status(500).json({ error: err.message });
     }
 }
