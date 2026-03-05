@@ -6,8 +6,8 @@ import { useDebriefStore } from '../store/useDebriefStore';
 import { Languages, Download, AlertTriangle, User, Database, Wallet, Plus, CheckCircle, Check, Zap, Trash2 } from 'lucide-react';
 import { MetaApiForm } from '../components/MetaApiForm';
 import { Mql5WebhookForm } from '../components/Mql5WebhookForm';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { useTranslation } from '../hooks/useTranslation';
 
@@ -54,24 +54,36 @@ export function Settings() {
     };
 
     const exportPDF = () => {
-        const doc = new jsPDF();
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(16);
-        doc.text("Seven Journal — Trading Report", 14, 15);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        doc.text(`Generated: ${format(new Date(), 'PPp')}`, 14, 22);
-        (doc as any).autoTable({
-            head: [[t.trades.date || 'Date', t.tradeForm.pair, t.tradeForm.side, t.tradeForm.result, "Net PnL"]],
-            body: trades.map(t => [
-                format(new Date(t.openedAt), 'yyyy-MM-dd'), t.pair, t.position, t.result,
-                t.netPnl !== null ? `$${t.netPnl?.toFixed(2)}` : '-'
-            ]),
-            startY: 30, theme: 'grid',
-            styles: { fontSize: 8 },
-            headStyles: { fillColor: [124, 58, 237] }
-        });
-        doc.save(`seven_report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+        try {
+            const activeAccountId = currentUser?.activeAccountId;
+            const reportTrades = trades.filter(t => t.accountId === activeAccountId);
+
+            if (reportTrades.length === 0) return alert(t.common.noData);
+
+            const doc = new jsPDF();
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(16);
+            doc.text("Seven Journal — Trading Report", 14, 15);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.text(`Generated: ${format(new Date(), 'PPp')}`, 14, 22);
+
+            autoTable(doc, {
+                head: [[t.trades.date || 'Date', t.tradeForm.pair, t.tradeForm.side, t.tradeForm.result, "Net PnL"]],
+                body: reportTrades.map(t => [
+                    t.openedAt ? format(new Date(t.openedAt), 'yyyy-MM-dd') : '-',
+                    t.pair, t.position, t.result,
+                    t.netPnl !== null ? `$${t.netPnl?.toFixed(2)}` : '-'
+                ]),
+                startY: 30, theme: 'grid',
+                styles: { fontSize: 8 },
+                headStyles: { fillColor: [124, 58, 237] }
+            });
+            doc.save(`seven_report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+        } catch (error) {
+            console.error('PDF Export failed:', error);
+            alert('PDF Export failed. Please check your data or try again.');
+        }
     };
 
     return (
