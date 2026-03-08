@@ -52,7 +52,7 @@ export default async function handler(req, res) {
                     'Content-Length': Buffer.byteLength(postData),
                     'User-Agent': 'Mozilla/5.0 (Vercel; Node.js)'
                 },
-                timeout: 30000
+                timeout: 55000
             };
 
             const clientReq = https.request(options, (clientRes) => {

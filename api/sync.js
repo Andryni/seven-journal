@@ -126,7 +126,7 @@ async function callMetaApi(hostname, path, token, method = 'GET') {
                 'User-Agent': 'SevenJournal/1.0',
                 'Content-Length': 0
             },
-            timeout: 20000
+            timeout: 55000
         };
         const req = https.request(options, (res) => {
             let body = '';
@@ -149,7 +149,7 @@ async function callMetaApi(hostname, path, token, method = 'GET') {
             });
         });
         req.on('error', e => resolve({ error: e.message }));
-        req.on('timeout', () => { req.destroy(); resolve({ error: 'Timeout after 20s' }); });
+        req.on('timeout', () => { req.destroy(); resolve({ error: 'Timeout after 55s' }); });
         req.end();
     });
 }

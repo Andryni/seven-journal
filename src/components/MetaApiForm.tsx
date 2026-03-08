@@ -65,7 +65,7 @@ export function MetaApiForm({ accountId, onConnected }: { accountId?: string, on
             console.log('Calling /api/provision for account:', targetAccountId);
 
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+            const timeoutId = setTimeout(() => controller.abort(), 75000); // 75s timeout
 
             try {
                 const response = await fetch('/api/provision', {

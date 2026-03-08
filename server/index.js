@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import MetaApi from 'metaapi.cloud-sdk';
+import MetaApi from 'metaapi.cloud-sdk/esm-node';
 import { createClient } from '@supabase/supabase-js';
 
 dotenv.config();
@@ -20,7 +20,8 @@ const supabase = createClient(
 
 // MetaApi Init
 const token = process.env.METAAPI_TOKEN;
-const api = new MetaApi.default(token);
+console.log('MetaApi type:', typeof MetaApi, MetaApi ? 'exists' : 'null');
+const api = new MetaApi(token);
 
 /**
  * Route: Provision MT5 Account
