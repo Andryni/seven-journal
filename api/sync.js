@@ -65,8 +65,13 @@ export default async function handler(req, res) {
                 // 3. Fetch History only if DEPLOYED
                 if (accReport.metaStatus === 'DEPLOYED') {
                     accReport.action = 'fetching_history';
+                    const region = accountInfo.region || 'agiliumtrade'; // default to global if no region
+                    const clientHost = region === 'agiliumtrade'
+                        ? 'mt-client-api-v1.agiliumtrade.agiliumtrade.ai'
+                        : `mt-client-api-v1.${region}.agiliumtrade.ai`;
+
                     const historyData = await callMetaApi(
-                        'mt-client-api-v1.agiliumtrade.agiliumtrade.ai',
+                        clientHost,
                         `/users/current/accounts/${acc.metaapi_account_id}/history-deals/time/${fromDate}/${toDate}`,
                         metaToken, 'GET'
                     );
