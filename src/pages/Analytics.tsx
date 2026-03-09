@@ -151,7 +151,11 @@ const AssetLabel = (props: any) => {
 ───────────────────────────────────────────────────────────── */
 export function Analytics() {
     const { t } = useTranslation();
-    const activeAccountId = useAuthStore(state => state.currentUser?.activeAccountId);
+    const currentUser = useAuthStore(state => state.currentUser);
+    const activeAccountId = currentUser?.activeAccountId;
+    const accounts = useAuthStore(state => state.accounts);
+    const activeAccount = accounts.find(a => a.id === activeAccountId);
+    const initialBalance = activeAccount?.initialCapital || 0;
     const allTrades = useTradeStore(state => state.trades);
 
     const [period, setPeriod] = useState<Period>('all');
@@ -172,7 +176,7 @@ export function Analytics() {
 
     /* ── Equity curve data ────────────────────────────── */
     const pnlData = useMemo(() => {
-        let cumulative = 0;
+        let cumulative = initialBalance;
         return [...closedTrades]
             .sort((a, b) => new Date(a.openedAt).getTime() - new Date(b.openedAt).getTime())
             .map(t => {
@@ -183,12 +187,12 @@ export function Analytics() {
                     tradePnl: t.netPnl || 0
                 };
             });
-    }, [closedTrades, period]);
+    }, [closedTrades, period, initialBalance]);
 
     /* ── Drawdown data ────────────────────────────────── */
     const drawdownData = useMemo(() => {
-        let peak = 0;
-        let cumulative = 0;
+        let peak = initialBalance;
+        let cumulative = initialBalance;
         return [...closedTrades]
             .sort((a, b) => new Date(a.openedAt).getTime() - new Date(b.openedAt).getTime())
             .map(t => {
@@ -201,7 +205,7 @@ export function Analytics() {
                     equity: parseFloat(cumulative.toFixed(2))
                 };
             });
-    }, [closedTrades, period]);
+    }, [closedTrades, period, initialBalance]);
 
     /* ── Stats ────────────────────────────────────────── */
     const stats = useMemo(() => {
@@ -218,7 +222,7 @@ export function Analytics() {
         const avgLoss = lossesCount > 0 ? totalLoss / lossesCount : 0;
 
         // Max drawdown
-        let peak2 = 0, cum2 = 0, maxDD = 0;
+        let peak2 = initialBalance, cum2 = initialBalance, maxDD = 0;
         [...closedTrades].sort((a, b) => new Date(a.openedAt).getTime() - new Date(b.openedAt).getTime()).forEach(t => {
             cum2 += (t.netPnl || 0);
             if (cum2 > peak2) peak2 = cum2;
@@ -270,7 +274,7 @@ export function Analytics() {
             timeframeData: groupByStacked('timeframe'),
             dayPerformance
         };
-    }, [closedTrades]);
+    }, [closedTrades, initialBalance]);
 
     if (allTrades.filter(t => t.accountId === activeAccountId).length === 0) {
         return (
