@@ -2,483 +2,554 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTradeStore } from '../store/useTradeStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { getDemoTrades } from '../lib/demoData';
-import {
-    Activity, BarChart2, Calendar, LayoutDashboard, Brain,
-    ArrowRight, TrendingUp, Shield, Zap, Target
+import { 
+    Shield, BarChart3, Activity,
+    ArrowRight, Globe, TrendingUp,
+    Rocket, PieChart, Calendar, Brain, MousePointer2, Layout
 } from 'lucide-react';
-import { useRef } from 'react';
-import { useTranslation } from '../hooks/useTranslation';
-import type { TranslationKeys } from '../lib/translations';
+import { motion } from 'framer-motion';
+import { AreaChart, Area, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
-/* ── Mini candlestick SVG chart ─────────────────────────────── */
-function SVGChart() {
+/* ── Enterprise Data Mocks ───────────────────────────────── */
+const performanceData = [
+    { date: 'Jan', balance: 100000, baseline: 100000 },
+    { date: 'Feb', balance: 104500, baseline: 101000 },
+    { date: 'Mar', balance: 103200, baseline: 102000 },
+    { date: 'Apr', balance: 108900, baseline: 103000 },
+    { date: 'May', balance: 115400, baseline: 104000 },
+    { date: 'Jun', balance: 113800, baseline: 105000 },
+    { date: 'Jul', balance: 121500, baseline: 106000 },
+    { date: 'Aug', balance: 128400, baseline: 107000 },
+];
+
+// removed unused riskData
+
+/* ── Premium Tooltip ─────────────────────────────────────── */
+const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+        return (
+            <div className="bg-[#0b0f19]/95 border border-slate-800 p-4 rounded-xl shadow-2xl backdrop-blur-xl">
+                <p className="text-slate-400 text-xs font-medium mb-3 tracking-widest uppercase">{label}</p>
+                {payload.map((entry: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between gap-6 mb-2 last:mb-0">
+                        <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                            <span className="text-sm text-slate-300">{entry.name}</span>
+                        </div>
+                        <span className="text-sm font-bold text-white font-mono">
+                            ${entry.value.toLocaleString()}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        );
+    }
+    return null;
+};
+
+/* ── UI Components ───────────────────────────────────────── */
+/* ── Interactive Hero Title Component ───────────────────── */
+const InteractiveTitle = ({ text }: { text: string }) => {
     return (
-        <svg viewBox="0 0 500 120" className="w-full h-full" preserveAspectRatio="none">
-            <defs>
-                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
-                </linearGradient>
-                <filter id="glow">
-                    <feGaussianBlur stdDeviation="2" result="blur" />
-                    <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-                </filter>
-            </defs>
-            {/* Fill area */}
-            <path d="M0,110 L0,90 C30,80 50,70 80,55 C110,40 130,50 160,38 C190,26 210,35 240,20 C270,8 290,25 320,20 C350,15 370,8 400,12 C430,16 460,10 480,5 L500,3 L500,120 Z"
-                fill="url(#chartGrad)" />
-            {/* Line */}
-            <path d="M0,90 C30,80 50,70 80,55 C110,40 130,50 160,38 C190,26 210,35 240,20 C270,8 290,25 320,20 C350,15 370,8 400,12 C430,16 460,10 480,5 L500,3"
-                fill="none" stroke="#10b981" strokeWidth="2.5" filter="url(#glow)" />
-            {/* Dots */}
-            {[[240, 20], [400, 12], [500, 3]].map(([x, y], i) => (
-                <circle key={i} cx={x} cy={y} r="4" fill="#10b981" filter="url(#glow)" />
+        <span className="inline-flex flex-wrap justify-center gap-x-4">
+            {text.split(" ").map((word, wordIdx) => (
+                <motion.span
+                    key={wordIdx}
+                    className="inline-flex gap-[2px] cursor-pointer group"
+                    whileHover="hover"
+                >
+                    {word.split("").map((char, charIdx) => (
+                        <motion.span
+                            key={charIdx}
+                            variants={{
+                                hover: {
+                                    y: [0, -15, 10, -5, 0],
+                                    color: (charIdx + wordIdx) % 2 === 0 ? "#10b981" : "#f43f5e",
+                                    transition: {
+                                        duration: 1.5,
+                                        repeat: Infinity,
+                                        delay: charIdx * 0.05,
+                                        ease: "easeInOut"
+                                    }
+                                }
+                            }}
+                            className="relative inline-block text-white saas-gradient-text"
+                        >
+                            {/* The "Wick" - Always visible but grows on hover */}
+                            <motion.div 
+                                variants={{
+                                    hover: { height: 40, opacity: 0.6 }
+                                }}
+                                initial={{ height: 0, opacity: 0 }}
+                                className={`absolute left-1/2 -translate-x-1/2 w-[2px] z-[-1] rounded-full
+                                    ${(charIdx + wordIdx) % 2 === 0 ? 'bg-emerald-500/50' : 'bg-rose-500/50'}`}
+                                style={{ top: '50%', transform: 'translateY(-50%)' }}
+                            />
+                            {char}
+                        </motion.span>
+                    ))}
+                </motion.span>
             ))}
+        </span>
+    );
+};
+
+const AnimatedChartBackground = () => (
+    <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden bg-[#020617]">
+        {/* Subtle Grid */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-20" />
+        
+        {/* Rising Equity Curve Animation */}
+        <svg className="absolute inset-0 w-full h-full opacity-30" preserveAspectRatio="none">
+            <motion.path
+                d="M 0 800 Q 200 700 400 750 T 800 600 T 1200 650 T 1600 400 T 2000 450"
+                stroke="url(#bgCurveGrad)"
+                strokeWidth="4"
+                fill="none"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ 
+                    pathLength: [0, 1],
+                    opacity: [0, 1, 0.5],
+                    d: [
+                        "M 0 800 Q 200 750 400 780 T 800 650 T 1200 700 T 1600 450 T 2000 500",
+                        "M 0 780 Q 200 700 400 720 T 800 550 T 1200 600 T 1600 350 T 2000 400",
+                        "M 0 800 Q 200 750 400 780 T 800 650 T 1200 700 T 1600 450 T 2000 500"
+                    ]
+                }}
+                transition={{ 
+                    duration: 20, 
+                    repeat: Infinity, 
+                    ease: "linear" 
+                }}
+            />
+            <defs>
+                <linearGradient id="bgCurveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0" />
+                    <stop offset="50%" stopColor="#6366f1" stopOpacity="1" />
+                    <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
+                </linearGradient>
+            </defs>
         </svg>
-    );
-}
 
-/* ── Animated background orbs ───────────────────────────────── */
-function BackgroundOrbs() {
+        {/* Floating "Trade" Particles */}
+        {[...Array(15)].map((_, i) => (
+            <motion.div
+                key={i}
+                initial={{ 
+                    x: Math.random() * 100 + "%", 
+                    y: "110%", 
+                    opacity: 0,
+                    scale: Math.random() * 0.5 + 0.5 
+                }}
+                animate={{ 
+                    y: "-10%", 
+                    opacity: [0, 0.3, 0],
+                    x: (Math.random() * 100 - 10) + "%"
+                }}
+                transition={{ 
+                    duration: Math.random() * 10 + 10, 
+                    repeat: Infinity, 
+                    delay: Math.random() * 20,
+                    ease: "linear"
+                }}
+                className={`absolute w-1 h-1 rounded-full ${i % 2 === 0 ? 'bg-purple-500' : 'bg-cyan-500'} blur-[1px]`}
+            />
+        ))}
+
+        {/* Ambient Glows */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-purple-600/10 blur-[120px] rounded-full mix-blend-screen opacity-50" />
+        <div className="absolute -bottom-[20%] right-[10%] w-[600px] h-[600px] bg-blue-600/10 blur-[100px] rounded-full mix-blend-screen opacity-30" />
+    </div>
+);
+
+const MarketTicker = () => {
+    const assets = [
+        { name: 'EURUSD', price: '1.0842', change: '+0.12%', up: true },
+        { name: 'XAUUSD', price: '2154.20', change: '-0.34%', up: false },
+        { name: 'BTCUSD', price: '64230', change: '+2.41%', up: true },
+        { name: 'GBPUSD', price: '1.2745', change: '+0.08%', up: true },
+        { name: 'NAS100', price: '18240', change: '-0.15%', up: false },
+        { name: 'USDJPY', price: '149.20', change: '+0.45%', up: true },
+    ];
+    
     return (
-        <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
-            {/* Primary purple orb - top left */}
-            <div className="absolute -top-48 -left-48 w-[700px] h-[700px] rounded-full"
-                style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.18) 0%, rgba(124,58,237,0.06) 40%, transparent 70%)', filter: 'blur(40px)', animation: 'float 8s ease-in-out infinite' }} />
-            {/* Cyan orb - top right */}
-            <div className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full"
-                style={{ background: 'radial-gradient(circle, rgba(6,182,212,0.12) 0%, rgba(6,182,212,0.04) 40%, transparent 70%)', filter: 'blur(60px)', animation: 'float 10s ease-in-out infinite reverse' }} />
-            {/* Bottom orb */}
-            <div className="absolute bottom-0 left-1/3 w-[500px] h-[500px] rounded-full"
-                style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.1) 0%, transparent 65%)', filter: 'blur(80px)', animation: 'float 12s ease-in-out infinite' }} />
-            {/* Mesh grid overlay */}
-            <div className="absolute inset-0 opacity-[0.03]"
-                style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)', backgroundSize: '80px 80px' }} />
-        </div>
-    );
-}
-
-/* ── Ticker bar ─────────────────────────────────────────────── */
-const TICKERS = ['EURUSD +0.12%', 'XAUUSD +0.43%', 'NAS100 -0.28%', 'GBPUSD +0.05%', 'BTC +1.8%', 'USDJPY -0.15%', 'ES500 +0.31%', 'GBPJPY +0.22%'];
-
-function TickerBanner() {
-    return (
-        <div className="relative overflow-hidden border-b border-white/[0.04] py-2.5" style={{ background: 'rgba(0,0,0,0.3)' }}>
-            <div className="ticker-container">
-                <div className="ticker-inner gap-0">
-                    {[...TICKERS, ...TICKERS].map((t, i) => {
-                        const up = t.includes('+');
-                        return (
-                            <span key={i} className="text-xs font-mono font-semibold mr-10 flex-shrink-0"
-                                style={{ color: up ? '#10b981' : '#ef4444' }}>
-                                <span className="text-white/40 mr-1.5">{up ? '▲' : '▼'}</span>{t}
-                            </span>
-                        );
-                    })}
-                </div>
+        <div className="fixed top-0 left-0 right-0 z-[60] py-2 bg-slate-950/80 backdrop-blur-md border-b border-white/5 overflow-hidden">
+            <div className="flex items-center gap-12 whitespace-nowrap animate-[marquee_30s_linear_infinite]">
+                {[...assets, ...assets].map((asset, i) => (
+                    <div key={i} className="flex items-center gap-2 px-4 border-r border-white/10 last:border-0">
+                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{asset.name}</span>
+                        <span className="text-[11px] font-mono text-white font-bold">{asset.price}</span>
+                        <span className={`text-[10px] font-bold ${asset.up ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {asset.change}
+                        </span>
+                    </div>
+                ))}
             </div>
         </div>
     );
-}
+};
 
-/* ── Feature card ───────────────────────────────────────────── */
-const FEATURES = (t: TranslationKeys) => [
-    { Icon: LayoutDashboard, color: '#7c3aed', title: t.landing.dashboardTitle, desc: t.landing.dashboardDesc },
-    { Icon: Activity, color: '#06b6d4', title: t.landing.journalTitle, desc: t.landing.journalDesc },
-    { Icon: Calendar, color: '#10b981', title: t.landing.calendarTitle, desc: t.landing.calendarDesc },
-    { Icon: BarChart2, color: '#f59e0b', title: t.landing.analyticsTitle, desc: t.landing.analyticsDesc },
-    { Icon: Brain, color: '#a78bfa', title: t.landing.psychologyTitle, desc: t.landing.psychologyDesc },
-    { Icon: Shield, color: '#34d399', title: t.landing.riskTitle, desc: t.landing.riskDesc },
-];
+const SevenLogo = ({ className = "w-10 h-10" }: { className?: string }) => (
+    <div className={className}>
+        <img src="/logo.png" alt="Seven Journal Logo" className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(139,92,246,0.3)]" />
+    </div>
+);
 
-const STATS = (t: TranslationKeys) => [
-    { val: '+$28,400', label: t.landing.demoPnL, color: '#10b981' },
-    { val: '68.5%', label: t.landing.avgWinRate, color: '#7c3aed' },
-    { val: '3.2 R:R', label: t.landing.rrRatio, color: '#06b6d4' },
-    { val: '∞', label: t.landing.private, color: '#f59e0b' },
-];
+const Navbar = () => {
+    const logoLetters = "Seven Journal".split("");
+    const navigate = useNavigate();
+    
+    return (
+        <nav className="fixed top-9 left-0 right-0 z-50 px-8 py-5 flex items-center justify-between mx-auto max-w-7xl mt-4 rounded-2xl bg-slate-950/40 backdrop-blur-xl border border-white/5 saas-glass">
+            <div className="flex items-center gap-4 group cursor-pointer" onClick={() => navigate('/')}>
+                <div className="relative flex items-center justify-center w-12 h-12 rounded-xl bg-slate-950/80 border border-white/5 shadow-2xl mr-1 overflow-hidden group-hover:border-purple-500/30 transition-colors">
+                    <SevenLogo className="w-9 h-9 relative z-10" />
+                    <motion.div 
+                        animate={{ 
+                            background: [
+                                "radial-gradient(circle at 0% 0%, rgba(139, 92, 246, 0.1) 0%, transparent 50%)",
+                                "radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.1) 0%, transparent 50%)",
+                                "radial-gradient(circle at 0% 0%, rgba(139, 92, 246, 0.1) 0%, transparent 50%)"
+                            ]
+                        }}
+                        transition={{ duration: 5, repeat: Infinity }}
+                        className="absolute inset-0" 
+                    />
+                </div>
+                <div className="flex items-center">
+                    {logoLetters.map((letter, i) => (
+                        <motion.span
+                            key={i}
+                            initial={{ y: 20, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            transition={{ delay: i * 0.05, ease: "easeOut" }}
+                            whileHover={{ 
+                                y: -3, 
+                                color: "#a855f7",
+                                transition: { duration: 0.1 }
+                            }}
+                            className="text-2xl font-black text-white tracking-tight font-plus inline-block whitespace-pre"
+                        >
+                            {letter}
+                        </motion.span>
+                    ))}
+                    <motion.span 
+                        animate={{ opacity: [0.2, 1, 0.2] }}
+                        transition={{ duration: 3, repeat: Infinity }}
+                        className="text-purple-500 text-2xl font-black ml-0.5"
+                    >
+                        .
+                    </motion.span>
+                </div>
+            </div>
+            <div className="hidden md:flex items-center gap-10 text-[11px] font-bold uppercase tracking-[0.2em] text-white/50">
+                <a href="#platform" className="hover:text-white transition-colors">Features</a>
+                <a href="#security" className="hover:text-white transition-colors">How it works</a>
+                <a href="#perf" className="hover:text-white transition-colors">Stats</a>
+            </div>
+            <div className="flex items-center gap-6">
+                <Link to="/signin" className="text-[11px] font-bold uppercase tracking-widest text-white/50 hover:text-white transition-colors">
+                    Sign In
+                </Link>
+                <Link to="/signup" className="px-8 py-3.5 rounded-xl bg-purple-600 text-white text-[12px] font-black uppercase tracking-widest hover:bg-purple-500 shadow-xl shadow-purple-600/30 transition-all active:scale-95">
+                    Get Started
+                </Link>
+            </div>
+        </nav>
+    );
+};
 
+/* ── Main Landing Component ──────────────────────────────── */
 export function LandingPage() {
-    const { t } = useTranslation();
     const navigate = useNavigate();
     const loadDemoData = useTradeStore(state => state.loadDemoData);
     const registerUser = useAuthStore(state => state.register);
-    const heroRef = useRef<HTMLDivElement>(null);
-
     const loginUser = useAuthStore(state => state.login);
+    useAuthStore();
 
     const handleDemo = async () => {
-        // 1. Try to login first (account might already exist)
         let { error } = await loginUser('demo@example.com', 'demo123456');
-
-        // 2. If login fails, register the demo user (first time)
         if (error) {
-            const { error: regError } = await registerUser('DemoTrader', 'demo@example.com', 'demo123456');
-            if (regError) {
-                console.error('Demo registration failed:', regError);
-                navigate('/signin');
-                return;
-            }
+            const { error: regError } = await registerUser('EnterpriseDemo', 'demo@example.com', 'demo123456');
+            if (regError) return navigate('/signin');
         }
+        const currentUser = useAuthStore.getState().currentUser;
+        if (!currentUser) return navigate('/signin');
 
-        const user = useAuthStore.getState().currentUser;
-
-        if (!user) {
-            console.error('Demo auth failed — no user after login/register');
-            navigate('/signin');
-            return;
-        }
-
-        // 3. Check if demo account exists, if not create it
         let accounts = useAuthStore.getState().accounts;
-        let demoAcc = accounts.find(a => a.name === 'Demo Account');
+        let demoAcc = accounts.find(a => a.name === 'Institutional Demo');
 
         if (!demoAcc) {
-            const { error: accError } = await useAuthStore.getState().addAccount({
-                userId: user.id,
-                name: 'Demo Account',
-                initialCapital: 100000,
-                currentBalance: 128400,
+            await useAuthStore.getState().addAccount({
+                userId: currentUser.id,
+                name: 'Institutional Demo',
+                initialCapital: 1000000,
+                currentBalance: 1284000,
                 currency: 'USD',
                 type: 'Demo',
-                broker: 'Seven Broker',
+                broker: 'Seven Prime',
                 connectionMethod: 'mql5'
             });
-            if (accError) {
-                console.error('Demo account creation failed:', accError);
-            }
             accounts = useAuthStore.getState().accounts;
-            demoAcc = accounts.find(a => a.name === 'Demo Account');
+            demoAcc = accounts.find(a => a.name === 'Institutional Demo');
         }
+        if (!demoAcc) return navigate('/signin');
 
-        if (!demoAcc) {
-            console.error('Could not create or find demo account');
-            navigate('/signin');
-            return;
-        }
-
-        // 4. Set active account and WAIT for it to complete
         await useAuthStore.getState().setActiveAccount(demoAcc.id);
-
-        // 5. Load demo trades linked to this account (merge into store, don't clear real trades)
         const demoTrades = getDemoTrades().map(t => ({ ...t, accountId: demoAcc!.id }));
         loadDemoData(demoTrades);
-
-        // 6. Navigate after everything is set
         navigate('/app/dashboard');
     };
 
-    const features = FEATURES(t);
-
     return (
-        <div className="min-h-screen text-white overflow-x-hidden" style={{ background: '#06060a', fontFamily: "'Space Grotesk', sans-serif" }}>
-            <BackgroundOrbs />
+        <div className="bg-[#020617] min-h-screen text-slate-50 font-plus selection:bg-purple-500/30 selection:text-white overflow-x-hidden">
+            <MarketTicker />
+            <AnimatedChartBackground />
+            <Navbar />
 
-            {/* ── Ticker ──────────────────────────────────── */}
-            <div className="relative z-50">
-                <TickerBanner />
-            </div>
-
-            {/* ── Navbar ──────────────────────────────────── */}
-            <nav className="relative z-50 flex items-center justify-between px-6 lg:px-16 py-4"
-                style={{ background: 'rgba(6,6,10,0.6)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                <div className="flex items-center gap-3">
-                    <div className="relative flex-shrink-0">
-                        <img src="/logo.png" alt="Seven Journal Logo" className="w-10 h-10 rounded-xl object-cover shadow-lg"
-                            style={{ border: '1px solid rgba(124,58,237,0.3)', boxShadow: '0 4px 20px rgba(124,58,237,0.3)' }} />
-                    </div>
-                    <div>
-                        <span className="font-black text-white tracking-tight" style={{ fontFamily: 'Orbitron, monospace', fontSize: '14px', letterSpacing: '2px' }}>SEVEN</span>
-                        <span className="ml-1.5 text-xs font-bold tracking-[0.3em] text-transparent bg-clip-text"
-                            style={{ backgroundImage: 'linear-gradient(135deg, #a78bfa, #06b6d4)' }}>JOURNAL</span>
-                    </div>
-                </div>
-
-                <div className="hidden md:flex items-center gap-8 text-sm font-medium text-white/50">
-                    <a href="#features" className="hover:text-white transition-colors">{t.landing.features}</a>
-                    <a href="#how" className="hover:text-white transition-colors">{t.landing.howItWorks}</a>
-                    <a href="#stats" className="hover:text-white transition-colors">{t.landing.stats}</a>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    <Link to="/signin"
-                        className="px-4 py-2 text-sm font-semibold text-white/60 hover:text-white transition-colors rounded-xl hover:bg-white/5">
-                        {t.landing.signIn}
-                    </Link>
-                    <Link to="/signup"
-                        style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', boxShadow: '0 4px 20px rgba(124,58,237,0.4)' }}
-                        className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white transition-all hover:shadow-lg hover:-translate-y-0.5">
-                        {t.common.getStarted} <ArrowRight size={14} />
-                    </Link>
-                </div>
-            </nav>
-
-            {/* ── Hero ────────────────────────────────────── */}
-            <header ref={heroRef} className="relative z-10 flex flex-col items-center text-center px-6 pt-24 pb-16">
-                {/* Badge */}
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold mb-8 animate-slide-up"
-                    style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.3)', color: '#a78bfa' }}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-profit animate-blink" />
-                    {t.landing.badge}
-                </div>
-
-                {/* H1 */}
-                <h1 className="text-5xl md:text-7xl lg:text-8xl font-black leading-none tracking-tight mb-6 animate-slide-up stagger-1"
-                    style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
-                    <span className="text-white">{t.landing.heroTitle}</span><br />
-                    <span className="text-transparent bg-clip-text"
-                        style={{ backgroundImage: 'linear-gradient(135deg, #7c3aed 0%, #a78bfa 40%, #06b6d4 100%)' }}>
-                        {t.landing.heroTitleAccent}
+            {/* 1. Hero Section */}
+            <section className="relative pt-60 pb-20 px-6 max-w-7xl mx-auto flex flex-col items-center">
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/40 border border-slate-700/50 text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 mb-8 backdrop-blur-md"
+                >
+                    <span className="flex h-2 w-2 relative">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
                     </span>
-                </h1>
+                    The #1 Trading Journal for serious traders
+                </motion.div>
 
-                <p className="text-lg md:text-xl text-white/50 max-w-xl leading-relaxed mb-10 animate-slide-up stagger-2" style={{ fontWeight: 400 }}>
-                    {t.landing.heroDesc}
-                </p>
+                <motion.h1 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="text-6xl md:text-8xl font-black tracking-tight text-center mb-10 leading-[1.2] max-w-5xl"
+                >
+                    <InteractiveTitle text="Master Your" /> <br />
+                    <InteractiveTitle text="Trading Edge." />
+                </motion.h1>
 
-                {/* CTAs */}
-                <div className="flex flex-col sm:flex-row gap-4 animate-slide-up stagger-3">
-                    <Link to="/signup"
-                        className="relative overflow-hidden group flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-bold text-base text-white transition-all"
-                        style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', boxShadow: '0 8px 40px rgba(124,58,237,0.5)' }}>
-                        <span className="relative z-10">{t.landing.startForFree}</span>
-                        <ArrowRight size={16} className="relative z-10 group-hover:translate-x-1 transition-transform" />
-                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                            style={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)' }} />
-                    </Link>
-                    <button onClick={handleDemo}
-                        className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-bold text-sm text-white/70 hover:text-white transition-all group"
-                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}
-                        onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(124,58,237,0.4)')}
-                        onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}>
-                        <Zap size={16} className="text-yellow-400" />
-                        {t.landing.tryDemo}
+                <motion.p 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-lg text-slate-400 mb-12 max-w-2xl text-center leading-relaxed font-medium"
+                >
+                    Stop guessing. Start winning. Journal, analyze, and refine your strategy with the most powerful trading journal ever built.
+                </motion.p>
+
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="flex flex-col sm:flex-row items-center justify-center gap-6"
+                >
+                    <button 
+                        onClick={handleDemo}
+                        className="group relative px-14 py-6 rounded-2xl bg-purple-600 text-white font-black uppercase text-[13px] tracking-[0.2em] overflow-hidden transition-all hover:bg-purple-500 hover:scale-105 shadow-2xl shadow-purple-600/40 flex items-center justify-center gap-4 active:scale-95"
+                    >
+                        <div className="absolute inset-x-0 top-0 h-[1px] bg-white/20" />
+                        Start for Free <ArrowRight size={18} />
+                        <motion.div 
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                            animate={{ x: ['-100%', '100%'] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                        />
                     </button>
-                </div>
+                    <button 
+                        onClick={handleDemo}
+                        className="px-14 py-6 rounded-2xl bg-transparent border border-white/10 text-white font-black uppercase text-[13px] tracking-[0.2em] hover:bg-white/5 hover:border-white/20 transition-all flex items-center justify-center gap-4 active:scale-95 hover:scale-105"
+                    >
+                        Try with Demo Account
+                    </button>
+                </motion.div>
 
-                {/* Hero Dashboard Preview */}
-                <div className="relative mt-20 w-full max-w-5xl animate-slide-up stagger-4">
-                    {/* Glow under the card */}
-                    <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 w-3/4 h-32 blur-3xl"
-                        style={{ background: 'rgba(124,58,237,0.25)' }} />
-
-                    {/* Dashboard mockup */}
-                    <div className="relative rounded-3xl overflow-hidden"
-                        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 40px 120px rgba(0,0,0,0.8), 0 0 0 1px rgba(124,58,237,0.1)' }}>
-
-                        {/* Mac traffic lights */}
-                        <div className="flex items-center gap-2 px-5 py-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.3)' }}>
-                            <div className="w-3 h-3 rounded-full bg-red-500/60" />
-                            <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
-                            <div className="w-3 h-3 rounded-full bg-green-500/60" />
-                            <div className="mx-auto text-xs font-mono text-white/20">sevenjournal.app/dashboard</div>
+                {/* Dashboard Preview */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 40 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5, duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+                    className="relative mt-24 mb-32 z-20 w-full max-w-5xl mx-auto"
+                >
+                    <div className="absolute -inset-1 bg-gradient-to-r from-purple-500/20 via-blue-500/20 to-emerald-500/20 rounded-[32px] blur-2xl opacity-50" />
+                    
+                    <div className="relative saas-glass rounded-[28px] overflow-hidden border border-white/10 shadow-3xl">
+                        {/* Mock Header */}
+                        <div className="h-14 border-b border-white/5 flex items-center px-6 gap-2 bg-slate-950/40">
+                            <div className="flex gap-2 mr-6">
+                                <div className="w-3 h-3 rounded-full bg-slate-800" />
+                                <div className="w-3 h-3 rounded-full bg-slate-800" />
+                                <div className="w-3 h-3 rounded-full bg-slate-800" />
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">SevenJournal - Apps / dashboard</span>
                         </div>
 
-                        {/* Mock content */}
-                        <div className="p-6">
-                            {/* KPI strip */}
-                            <div className="grid grid-cols-4 gap-3 mb-6">
+                        {/* Content */}
+                        <div className="p-10">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
                                 {[
-                                    { l: 'NET P&L', v: '+$2,850', c: '#10b981' },
-                                    { l: 'WIN RATE', v: '68.5%', c: '#a78bfa' },
-                                    { l: 'TRADES', v: '127', c: '#06b6d4' },
-                                    { l: 'PROFIT F', v: '3.97', c: '#f59e0b' },
-                                ].map(({ l, v, c }) => (
-                                    <div key={l} className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                        <div className="text-[9px] font-bold tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.3)' }}>{l}</div>
-                                        <div className="text-xl font-black font-mono" style={{ color: c }}>{v}</div>
+                                    { label: 'Total PnL', val: '+$2,850', sub: '+$425.20 Today', up: true },
+                                    { label: 'Win Rate', val: '68.52%', sub: 'Above Average', up: true },
+                                    { label: 'Trades', val: '127', sub: '+12 this week', up: true },
+                                    { label: 'Factor', val: '2.97', sub: 'Institutional Grade', up: true },
+                                ].map((stat, i) => (
+                                    <div key={i} className="space-y-2">
+                                        <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{stat.label}</div>
+                                        <div className="text-3xl font-black text-white">{stat.val}</div>
+                                        <div className={`text-[10px] font-bold uppercase tracking-widest ${stat.up ? 'text-emerald-500' : 'text-rose-500'}`}>{stat.sub}</div>
                                     </div>
                                 ))}
                             </div>
 
-                            {/* Chart area */}
-                            <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', height: '160px' }}>
-                                <div className="px-4 pt-4 pb-0">
-                                    <div className="text-[10px] font-bold tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.3)' }}>EQUITY CURVE</div>
-                                    <div className="text-base font-bold text-white">Performance History</div>
+                            <div className="bg-slate-950/30 border border-white/5 rounded-2xl p-8 relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent" />
+                                <div className="flex items-center justify-between mb-8">
+                                    <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-white/40">Performance History</h3>
+                                    <TrendingUp className="w-5 h-5 text-emerald-500 opacity-50" />
                                 </div>
-                                <div className="h-[100px] px-2">
-                                    <SVGChart />
+                                <div className="h-[240px] w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={performanceData}>
+                                            <defs>
+                                                <linearGradient id="equityGrad" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.02)" />
+                                            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#10b981', strokeWidth: 1 }} />
+                                            <Area type="monotone" dataKey="balance" name="Equity" stroke="#10b981" strokeWidth={3} fill="url(#equityGrad)" activeDot={{ r: 6, fill: '#10b981', stroke: '#020617', strokeWidth: 2 }} />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
                                 </div>
                             </div>
                         </div>
                     </div>
+                </motion.div>
 
-                    {/* Floating cards */}
-                    <div className="absolute -left-8 top-1/3 hidden lg:block animate-float"
-                        style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', backdropFilter: 'blur(20px)', borderRadius: '16px', padding: '14px 18px', animationDelay: '0.5s' }}>
-                        <div className="text-[10px] font-bold text-emerald-400/70 uppercase tracking-widest mb-1">Daily P&L</div>
-                        <div className="text-xl font-black font-mono text-emerald-400">+$495.00</div>
-                        <div className="text-[10px] text-emerald-400/50">↑ 3 wins today</div>
-                    </div>
-
-                    <div className="absolute -right-8 top-1/4 hidden lg:block" style={{ animation: 'float 4s ease-in-out 1s infinite' }}>
-                        <div style={{ background: 'rgba(124,58,237,0.15)', border: '1px solid rgba(124,58,237,0.3)', backdropFilter: 'blur(20px)', borderRadius: '16px', padding: '14px 18px' }}>
-                            <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'rgba(167,139,250,0.6)' }}>Win Rate</div>
-                            <div className="text-xl font-black font-mono" style={{ color: '#a78bfa' }}>68.5%</div>
-                            <div className="text-[10px]" style={{ color: 'rgba(167,139,250,0.5)' }}>↑ +5% this week</div>
+                {/* Big Stats Row */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 w-full max-w-7xl mb-48">
+                    {[
+                        { label: '+$28,400', sub: 'Total PnL Tracked' },
+                        { label: '68.5%', sub: 'Avg Win Rate' },
+                        { label: '3.2 R:R', sub: 'Risk / Reward' },
+                        { label: '∞', sub: 'Your Potential' },
+                    ].map((stat, i) => (
+                        <div key={i} className="text-center group">
+                            <div className="text-4xl font-black mb-3 saas-gradient-text group-hover:scale-110 transition-transform duration-500">{stat.label}</div>
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{stat.sub}</div>
                         </div>
-                    </div>
-                </div>
-            </header>
-
-            {/* ── Stats bar ───────────────────────────────── */}
-            <section id="stats" className="relative z-10 py-20 px-6">
-                <div className="max-w-5xl mx-auto">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {STATS(t).map(({ val, label, color }) => (
-                            <div key={label} className="flex flex-col items-center text-center p-6 rounded-2xl"
-                                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                <div className="text-4xl font-black font-mono mb-2" style={{ color }}>{val}</div>
-                                <div className="text-xs font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>{label}</div>
-                            </div>
-                        ))}
-                    </div>
+                    ))}
                 </div>
             </section>
 
-            {/* ── How it works ────────────────────────────── */}
-            <section id="how" className="relative z-10 py-20 px-6">
-                <div className="max-w-5xl mx-auto">
-                    <div className="text-center mb-16">
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold mb-4"
-                            style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', color: '#67e8f9' }}>
-                            {t.landing.howItWorksBadge}
-                        </div>
-                        <h2 className="text-4xl md:text-5xl font-black mb-4">
-                            {t.landing.simple} <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, #a78bfa, #06b6d4)' }}>{t.landing.powerful}</span>
-                        </h2>
-                        <p className="text-white/40 max-w-md mx-auto">{t.landing.threeSteps}</p>
-                    </div>
+            {/* 3. Simple. Powerful. Section */}
+            <section id="platform" className="py-32 px-6 max-w-7xl mx-auto text-center">
+                <div className="inline-block px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400 mb-6">
+                    How it works
+                </div>
+                <h2 className="text-5xl font-black mb-6">Simple. <span className="text-blue-500">Powerful.</span></h2>
+                <p className="text-slate-400 mb-20 max-w-xl mx-auto">Three steps to transform your trading performance forever.</p>
 
-                    <div className="grid md:grid-cols-3 gap-6">
-                        {[
-                            { n: '01', Icon: Activity, color: '#7c3aed', title: t.landing.logStepTitle, desc: t.landing.logStepDesc },
-                            { n: '02', Icon: BarChart2, color: '#06b6d4', title: t.landing.analyzeStepTitle, desc: t.landing.analyzeStepDesc },
-                            { n: '03', Icon: TrendingUp, color: '#10b981', title: t.landing.scaleStepTitle, desc: t.landing.scaleStepDesc },
-                        ].map(({ n, Icon, color, title, desc }) => (
-                            <div key={n} className="relative p-8 rounded-3xl group transition-all duration-300 cursor-default"
-                                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
-                                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = `${color}40`; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-4px)'; }}
-                                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.06)'; (e.currentTarget as HTMLDivElement).style.transform = 'none'; }}>
-                                <div className="text-6xl font-black font-mono mb-6 select-none" style={{ color: 'rgba(255,255,255,0.05)', lineHeight: 1 }}>{n}</div>
-                                <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5"
-                                    style={{ background: `${color}18`, border: `1px solid ${color}30` }}>
-                                    <Icon size={22} style={{ color }} />
-                                </div>
-                                <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
-                                <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.4)' }}>{desc}</p>
+                <div className="grid md:grid-cols-3 gap-12">
+                    {[
+                        { num: '01', title: 'Log Every Trade', icon: MousePointer2, desc: 'Seamlessly sync your MT4/MT5 trades in under 60 seconds.' },
+                        { num: '02', title: 'Analyze Deeply', icon: BarChart3, desc: 'Uncover hidden patterns and psychological triggers.' },
+                        { num: '03', title: 'Scale Your Edge', icon: Rocket, desc: 'Transform raw data into a repeatable execution strategy.' },
+                    ].map((step, i) => (
+                        <motion.div 
+                            key={i}
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: i * 0.1 }}
+                            className="bg-slate-900/40 p-10 rounded-3xl border border-white/5 saas-glass text-left group hover:border-purple-500/30 transition-all"
+                        >
+                            <div className="text-5xl font-black text-white/5 mb-6 group-hover:text-purple-500/10 transition-colors uppercase">{step.num}</div>
+                            <div className="w-12 h-12 rounded-2xl bg-slate-950 flex items-center justify-center mb-6 border border-white/10">
+                                <step.icon className="w-6 h-6 text-purple-500" />
                             </div>
-                        ))}
-                    </div>
+                            <h4 className="text-2xl font-black mb-4 uppercase">{step.title}</h4>
+                            <p className="text-slate-500 leading-relaxed">{step.desc}</p>
+                        </motion.div>
+                    ))}
                 </div>
             </section>
 
-            {/* ── Features grid ───────────────────────────── */}
-            <section id="features" className="relative z-10 py-20 px-6">
-                <div className="max-w-6xl mx-auto">
-                    <div className="text-center mb-16">
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold mb-4"
-                            style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.25)', color: '#a78bfa' }}>
-                            {t.landing.featuresBadge}
-                        </div>
-                        <h2 className="text-4xl md:text-5xl font-black mb-4">
-                            {t.landing.profitableTitle}<br />
-                            <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, #7c3aed, #06b6d4)' }}>{t.landing.profitableAccent}</span>
-                        </h2>
-                        <p className="text-white/40 max-w-md mx-auto">{t.landing.noSpreadsheets}</p>
+            {/* 4. Feature Grid Section */}
+            <section className="py-32 px-6 max-w-7xl mx-auto">
+                <div className="text-center mb-24">
+                    <div className="inline-block px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-[10px] font-bold uppercase tracking-[0.2em] text-purple-400 mb-6">
+                        Features
                     </div>
+                    <h2 className="text-5xl font-black mb-6">Everything you need to <br /><span className="text-purple-500">become profitable.</span></h2>
+                    <p className="text-slate-400 max-w-xl mx-auto">No more spreadsheets. Own a professional-grade trading command center.</p>
+                </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {features.map(({ Icon, color, title, desc }, i) => (
-                            <div key={title}
-                                className="p-7 rounded-3xl group transition-all duration-300"
-                                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', animationDelay: `${i * 0.08}s` }}
-                                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = `${color}0a`; (e.currentTarget as HTMLDivElement).style.borderColor = `${color}30`; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-4px)'; }}
-                                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.02)'; (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.06)'; (e.currentTarget as HTMLDivElement).style.transform = 'none'; }}>
-                                <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5"
-                                    style={{ background: `${color}18`, border: `1px solid ${color}25` }}>
-                                    <Icon size={22} style={{ color }} />
-                                </div>
-                                <h3 className="font-bold text-white text-lg mb-2">{title}</h3>
-                                <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.4)' }}>{desc}</p>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {[
+                        { icon: Layout, title: 'Smart Dashboard', desc: 'Real-time PnL tracking, equity curve, and performance KPIs at a glance.', color: 'purple' },
+                        { icon: Activity, title: 'Trade Journal', desc: 'Log every trade detail—entry, exit, strategy, and psychological state.', color: 'blue' },
+                        { icon: Calendar, title: 'Performance Calendar', desc: 'Visualize your winning days, find patterns, and stay consistent.', color: 'emerald' },
+                        { icon: PieChart, title: 'Deep Analytics', desc: 'Break down by session, pair, and strategy to find where you make money.', color: 'amber' },
+                        { icon: Brain, title: 'Psychology Tracker', desc: 'Track emotions and mindset state to conquer your mental edge.', color: 'rose' },
+                        { icon: Shield, title: 'Risk Management', desc: 'RR calculator, drawdown limits, and consistency score per account.', color: 'cyan' },
+                    ].map((feat, i) => (
+                        <div key={i} className="p-8 rounded-[32px] bg-slate-950/40 border border-white/5 hover:border-white/10 transition-all group hover:bg-slate-900/50">
+                            <div className="w-12 h-12 rounded-2xl bg-slate-950 border border-white/10 flex items-center justify-center mb-8">
+                                <feat.icon className={`w-6 h-6 text-${feat.color}-500 group-hover:scale-110 transition-transform`} />
                             </div>
-                        ))}
-                    </div>
+                            <h4 className="text-xl font-bold mb-4">{feat.title}</h4>
+                            <p className="text-slate-500 text-sm leading-relaxed">{feat.desc}</p>
+                        </div>
+                    ))}
                 </div>
             </section>
 
-            {/* ── CTA Banner ──────────────────────────────── */}
-            <section className="relative z-10 py-20 px-6">
-                <div className="max-w-4xl mx-auto">
-                    <div className="relative rounded-3xl overflow-hidden p-12 text-center"
-                        style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.2) 0%, rgba(6,182,212,0.1) 100%)', border: '1px solid rgba(124,58,237,0.3)' }}>
-                        {/* Glow */}
-                        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 80% 80% at 50% 0%, rgba(124,58,237,0.25), transparent)' }} />
-
-                        <div className="relative z-10">
-                            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold mb-6"
-                                style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#34d399' }}>
-                                <span className="w-1.5 h-1.5 rounded-full bg-profit animate-blink" />
-                                FREE TO GET STARTED
-                            </div>
-                            <h2 className="text-4xl md:text-5xl font-black text-white mb-4">
-                                Ready to find your edge?
-                            </h2>
-                            <p className="text-white/50 max-w-md mx-auto mb-10">
-                                Join thousands of traders who stopped losing money on bad habits and started making consistent profits.
-                            </p>
-                            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                                <Link to="/signup"
-                                    className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-bold text-white transition-all hover:-translate-y-1"
-                                    style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', boxShadow: '0 8px 40px rgba(124,58,237,0.6)' }}>
-                                    Create Free Account <ArrowRight size={16} />
-                                </Link>
-                                <button onClick={handleDemo}
-                                    className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-bold text-white/70 hover:text-white transition-all"
-                                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                    <Target size={16} />
-                                    See Demo First
-                                </button>
-                            </div>
+            {/* 5. Final CTA */}
+            <section className="py-48 px-6 max-w-7xl mx-auto">
+                <div className="bg-gradient-to-br from-purple-900/40 via-blue-900/20 to-slate-950 p-20 rounded-[48px] border border-white/10 saas-glass text-center relative overflow-hidden">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(139,92,246,0.1),transparent_70%)]" />
+                    <div className="relative z-10">
+                        <div className="inline-block px-3 py-1 rounded-full bg-white/10 border border-white/20 text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 mb-8">
+                            Free-to-get started
+                        </div>
+                        <h2 className="text-6xl font-black mb-10 text-white uppercase">Ready to find your edge?</h2>
+                        <p className="text-xl text-slate-400 mb-12 max-w-xl mx-auto">Join thousands of traders who track, analyze, and scale their trading performance.</p>
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+                            <button className="px-10 py-5 bg-purple-600 rounded-2xl text-white font-black uppercase text-xs tracking-widest hover:bg-purple-500 shadow-2xl shadow-purple-600/40 transition-all flex items-center gap-4">
+                                Create Free Account <ArrowRight size={16} />
+                            </button>
+                            <button className="px-10 py-5 border border-white/10 bg-white/5 rounded-2xl text-white font-black uppercase text-xs tracking-widest hover:bg-white/10 transition-all flex items-center gap-4">
+                                <Globe size={16} /> See Some First
+                            </button>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* ── Footer ──────────────────────────────────── */}
-            <footer className="relative z-10 px-6 lg:px-16 py-10" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-                    <div className="flex items-center gap-3">
-                        <img src="/logo.png" alt="" className="w-7 h-7 rounded-lg opacity-80" />
-                        <span className="font-black text-sm tracking-widest" style={{ fontFamily: 'Orbitron, monospace', color: 'rgba(255,255,255,0.6)' }}>SEVEN JOURNAL</span>
+            {/* Footer */}
+            <footer className="py-12 border-t border-white/5 px-8">
+                <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 opacity-40">
+                    <div className="flex items-center gap-2">
+                        <Activity className="w-5 h-5 text-purple-500" />
+                        <span className="font-extrabold tracking-tight">SEVEN JOURNAL.</span>
                     </div>
-
-                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                        Built for traders, by traders. 100% local — your data stays on your device.
-                    </p>
-
-                    <div className="flex items-center gap-6 text-xs font-medium" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                        <Link to="/signin" className="hover:text-white transition-colors">Sign in</Link>
-                        <Link to="/signup" className="hover:text-white transition-colors">Sign up</Link>
-                        <span>© 2026</span>
+                    <div className="text-[10px] font-bold uppercase tracking-widest">© 2026 SEVEN JOURNAL. ALL RIGHTS RESERVED.</div>
+                    <div className="flex gap-8 text-[10px] font-bold uppercase tracking-widest">
+                        <a href="#">Status</a>
+                        <a href="#">Privacy</a>
+                        <a href="#">Terms</a>
                     </div>
                 </div>
             </footer>
 
             <style>{`
-                @keyframes float {
-                    0%, 100% { transform: translateY(0); }
-                    50% { transform: translateY(-12px); }
-                }
-                .animate-slide-up { animation: slide-up 0.7s cubic-bezier(0.34,1.56,0.64,1) both; }
-                .stagger-1 { animation-delay: 0.1s; }
-                .stagger-2 { animation-delay: 0.2s; }
-                .stagger-3 { animation-delay: 0.3s; }
-                .stagger-4 { animation-delay: 0.45s; }
-                @keyframes slide-up {
-                    from { opacity: 0; transform: translateY(30px); }
-                    to   { opacity: 1; transform: translateY(0); }
+                @keyframes marquee {
+                    0% { transform: translateX(0); }
+                    100% { transform: translateX(-50%); }
                 }
             `}</style>
         </div>

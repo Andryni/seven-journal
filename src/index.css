@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -44,6 +44,13 @@
   --chart-3: 160 84% 39%;
   --chart-4: 38 92% 50%;
   --chart-5: 0 84% 60%;
+
+  /* SaaS Design Tokens */
+  --saas-primary: #8b5cf6;
+  --saas-secondary: #06b6d4;
+  --saas-accent: #10b981;
+  --saas-glow-purple: 0 0 30px rgba(139, 92, 246, 0.2);
+  --saas-glow-cyan: 0 0 30px rgba(6, 182, 212, 0.2);
 }
 
 .dark {
@@ -401,6 +408,52 @@
   .loss-glow {
     color: #ef4444;
     text-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+  }
+
+  .font-instrument {
+    font-family: 'Instrument Serif', serif;
+  }
+
+  .font-syne {
+    font-family: 'Syne', sans-serif;
+  }
+
+  /* SaaS Utilities */
+  .saas-gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#8b5cf6] via-[#3b82f6] to-[#06b6d4];
+  }
+
+  .saas-glass {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  .border-beam {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .border-beam::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    background: linear-gradient(var(--beam-angle), transparent 20%, #8b5cf6 50%, transparent 80%);
+    z-index: -1;
+    animation: beam-spin 4s linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes beam-spin {
+    from { --beam-angle: 0deg; }
+    to { --beam-angle: 360deg; }
+  }
+
+  @property --beam-angle {
+    syntax: "<angle>";
+    initial-value: 0deg;
+    inherits: false;
   }
 }
 
