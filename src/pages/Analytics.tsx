@@ -536,10 +536,13 @@ export function Analytics() {
                                     <XAxis dataKey="short" tick={axisStyle} tickLine={false} axisLine={false} tickMargin={8} />
                                     <YAxis tick={{ ...axisStyle, fill: 'rgba(255,255,255,0.25)', fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={v => `$${v}`} width={52} />
                                     <Tooltip {...TOOLTIP_STYLE}
-                                        formatter={(v: any, name?: string) => [
-                                            <span style={{ color: name === 'win' ? '#10b981' : '#ef4444', fontWeight: 700 }}>${Number(v).toFixed(2)}</span>,
-                                            name === 'win' ? '✅ Profit' : '❌ Loss'
-                                        ]}
+                                        formatter={(value: any, name: any) => {
+                                            const isWin = name === 'win';
+                                            return [
+                                                <span style={{ color: isWin ? '#10b981' : '#ef4444', fontWeight: 700 }}>${Number(value).toFixed(2)}</span>,
+                                                isWin ? '✅ Profit' : '❌ Loss'
+                                            ];
+                                        }}
                                         labelFormatter={(label) => <span style={{ color: '#a78bfa', fontWeight: 700 }}>{label}</span>}
                                     />
                                     <Bar dataKey="win" fill="url(#dayWin)" radius={[5, 5, 0, 0]} stroke="#10b981" strokeWidth={1} strokeOpacity={0.2} />
