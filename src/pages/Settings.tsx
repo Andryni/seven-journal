@@ -1,15 +1,54 @@
-import { useState } from 'react';
+import { useState, Component } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTradeStore } from '../store/useTradeStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useDebriefStore } from '../store/useDebriefStore';
-import { Languages, Download, AlertTriangle, User, Database, Wallet, Plus, CheckCircle, Check, Zap, Trash2 } from 'lucide-react';
-import { MetaApiForm } from '../components/MetaApiForm';
-import { Mql5WebhookForm } from '../components/Mql5WebhookForm';
+import { Languages, Download, AlertTriangle, User, Database, Wallet, Plus, CheckCircle, Check, Zap, Trash2, BarChart3, AlertCircle } from 'lucide-react';
+
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { useTranslation } from '../hooks/useTranslation';
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, error: Error | null }> {
+    constructor(props: { children: ReactNode }) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+    static getDerivedStateFromError(error: Error) {
+        return { hasError: true, error };
+    }
+    componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+        console.error("ErrorBoundary caught an error", error, errorInfo);
+    }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="p-6 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 space-y-3">
+                    <div className="flex items-center gap-2 font-bold">
+                        <AlertCircle size={18} />
+                        <h4>Component Crash</h4>
+                    </div>
+                    <p className="text-xs opacity-80">This section failed to load. Please try refreshing or check your connection.</p>
+                    <pre className="text-[10px] bg-black/40 p-3 rounded-lg overflow-auto max-w-full font-mono border border-white/5">
+                        {this.state.error?.message}
+                    </pre>
+                    <button 
+                        onClick={() => window.location.reload()}
+                        className="btn-primary py-2 px-4 text-[10px]"
+                    >
+                        Reload Page
+                    </button>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
+import { MetaApiForm } from '../components/MetaApiForm';
+import { Mql5WebhookForm } from '../components/Mql5WebhookForm';
+import { MyfxbookForm } from '../components/MyfxbookForm';
 
 const TABS = (t: any) => [
     { id: 'Profile', Icon: User, label: t.settings.profile },
@@ -20,7 +59,7 @@ const TABS = (t: any) => [
 export function Settings() {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('Accounts');
-    const [connectionMethod, setConnectionMethod] = useState<'metaapi' | 'mql5'>('metaapi');
+    const [connectionMethod, setConnectionMethod] = useState<'metaapi' | 'mql5' | 'myfxbook'>('metaapi');
     const trades = useTradeStore(state => state.trades);
     const debriefs = useDebriefStore(state => state.debriefs);
 
@@ -249,13 +288,17 @@ export function Settings() {
                                                         <span className="text-[9px] font-bold py-0.5 px-1.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
                                                             <CheckCircle size={10} /> MQL5 Active
                                                         </span>
+                                                    ) : acc.connectionMethod === 'myfxbook' ? (
+                                                        <span className="text-[9px] font-bold py-0.5 px-1.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-1">
+                                                            <BarChart3 size={10} /> Myfxbook Active
+                                                        </span>
                                                     ) : null}
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Connection Section - Only show if not synced and not manual */}
-                                        {isActive && !acc.metaapiAccountId && acc.connectionMethod !== 'manual' && !hasAccountTrades && (
+                                        {isActive && !acc.metaapiAccountId && !acc.myfxbookAccountId && acc.connectionMethod !== 'manual' && !hasAccountTrades && (
                                             <div className="mt-6 pt-6 border-t border-white/[0.05] space-y-6">
                                                 <div className="flex items-center gap-2 p-1 rounded-xl bg-white/5 border border-white/10 w-fit">
                                                     <button
@@ -265,19 +308,29 @@ export function Settings() {
                                                         MetaApi (Auto)
                                                     </button>
                                                     <button
+                                                        onClick={(e) => { e.stopPropagation(); setConnectionMethod('myfxbook'); }}
+                                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${connectionMethod === 'myfxbook' ? 'bg-primary-light/20 text-primary-light border border-primary-light/30' : 'text-text-muted hover:text-white'}`}
+                                                    >
+                                                        Myfxbook (Auto)
+                                                    </button>
+                                                    <button
                                                         onClick={(e) => { e.stopPropagation(); setConnectionMethod('mql5'); }}
                                                         className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${connectionMethod === 'mql5' ? 'bg-primary-light/20 text-primary-light border border-primary-light/30' : 'text-text-muted hover:text-white'}`}
                                                     >
-                                                        MQL5 (Manual WebRequest)
+                                                        MQL5 (Free)
                                                     </button>
                                                 </div>
 
                                                 <div className="animate-fade-in">
-                                                    {connectionMethod === 'metaapi' ? (
-                                                        <MetaApiForm accountId={acc.id} />
-                                                    ) : (
-                                                        <Mql5WebhookForm accountId={acc.id} />
-                                                    )}
+                                                    <ErrorBoundary>
+                                                        {connectionMethod === 'metaapi' ? (
+                                                            <MetaApiForm accountId={acc.id} />
+                                                        ) : connectionMethod === 'myfxbook' ? (
+                                                            <MyfxbookForm accountId={acc.id} />
+                                                        ) : (
+                                                            <Mql5WebhookForm accountId={acc.id} />
+                                                        )}
+                                                    </ErrorBoundary>
                                                 </div>
                                             </div>
                                         )}
@@ -371,7 +424,7 @@ const AccountForm = ({ onCreated }: { onCreated: () => void }) => {
     const [broker, setBroker] = useState('');
     const [type, setType] = useState<'Demo' | 'Real' | 'Propfirm' | 'Funded'>('Demo');
     const [currency, setCurrency] = useState<'USD' | 'EUR' | 'GBP' | 'CHF' | 'JPY' | 'CAD' | 'AUD'>('USD');
-    const [connectionMethod, setConnectionMethod] = useState<'metaapi' | 'mql5' | 'manual'>('manual');
+    const [connectionMethod, setConnectionMethod] = useState<'metaapi' | 'mql5' | 'manual' | 'myfxbook'>('manual');
     const [created, setCreated] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -399,7 +452,7 @@ const AccountForm = ({ onCreated }: { onCreated: () => void }) => {
 
             <div>
                 <label className="section-label mb-2 block">Connection Method</label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     <button
                         type="button"
                         onClick={() => setConnectionMethod('manual')}
@@ -420,6 +473,13 @@ const AccountForm = ({ onCreated }: { onCreated: () => void }) => {
                         className={`p-2 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all ${connectionMethod === 'metaapi' ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400' : 'bg-white/5 border-white/10 text-text-muted hover:text-white'}`}
                     >
                         MetaApi (Auto)
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setConnectionMethod('myfxbook')}
+                        className={`p-2 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all ${connectionMethod === 'myfxbook' ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-white/5 border-white/10 text-text-muted hover:text-white'}`}
+                    >
+                        Myfxbook (Auto)
                     </button>
                 </div>
             </div>

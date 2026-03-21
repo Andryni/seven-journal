@@ -157,6 +157,9 @@ export const useAuthStore = create<AuthState>()(
                                 type: a.type,
                                 broker: a.broker,
                                 metaapiAccountId: a.metaapi_account_id,
+                                myfxbookAccountId: a.myfxbook_account_id,
+                                myfxbookEmail: a.myfxbook_email,
+                                myfxbookPassword: a.myfxbook_password,
                                 connectionMethod: a.connection_method || 'mql5',
                                 createdAt: a.created_at
                             }))
@@ -317,6 +320,9 @@ export const useAuthStore = create<AuthState>()(
                             type: newRow.type,
                             broker: newRow.broker,
                             metaapiAccountId: newRow.metaapi_account_id,
+                            myfxbookAccountId: newRow.myfxbook_account_id,
+                            myfxbookEmail: newRow.myfxbook_email,
+                            myfxbookPassword: newRow.myfxbook_password,
                             connectionMethod: newRow.connection_method || 'mql5',
                             createdAt: newRow.created_at
                         };

@@ -23,7 +23,10 @@ export const tradingAccountSchema = z.object({
     type: z.enum(["Demo", "Real", "Propfirm", "Funded"]),
     broker: z.string(),
     metaapiAccountId: z.string().optional().nullable(),
-    connectionMethod: z.enum(["metaapi", "mql5", "manual"]).default("mql5"),
+    myfxbookAccountId: z.string().optional().nullable(),
+    myfxbookEmail: z.string().optional().nullable(),
+    myfxbookPassword: z.string().optional().nullable(),
+    connectionMethod: z.enum(["metaapi", "mql5", "manual", "myfxbook"]).default("mql5"),
     createdAt: z.string(),
 });
 
