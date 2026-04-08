@@ -7,6 +7,7 @@ import { TradeDetail } from './pages/TradeDetail';
 import { Calendar } from './pages/Calendar';
 import { Analytics } from './pages/Analytics';
 import { Debrief } from './pages/Debrief';
+import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { LandingPage } from './pages/Landing';
 import { SignIn, SignUp } from './pages/Auth';
@@ -54,6 +55,7 @@ function App() {
           <Route path="calendar" element={<Calendar />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="debrief" element={<Debrief />} />
+          <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>

@@ -19,6 +19,7 @@ export function Debrief() {
     const [selectedDateStr, setSelectedDateStr] = useState<string>(queryDate);
     const [saved, setSaved] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [alertMsg, setAlertMsg] = useState<{ title: string; desc: string; type: 'error' | 'success' } | null>(null);
 
     const { debriefs: allDebriefs, addDebrief, updateDebrief, getDebriefByDate } = useDebriefStore();
     const activeAccountId = useAuthStore(state => state.currentUser?.activeAccountId);
@@ -44,13 +45,13 @@ export function Debrief() {
         if (currentDebrief) { form.reset(currentDebrief); }
         else {
             form.reset({
-                ...form.getValues(), date: selectedDateStr,
+                ...form.getValues(), date: selectedDateStr, accountId: activeAccountId || '',
                 htfBias: 'Neutral', narrative: '', keyLevels: '', chartUrls: [],
                 marketRespectedPlan: 'Partial', mistakes: '', goodActions: '',
                 lessonsLearned: '', emotionalState: 'Calm', dayRating: 3,
             });
         }
-    }, [selectedDateStr, currentDebrief]);
+    }, [selectedDateStr, currentDebrief, activeAccountId]);
 
 
     const onSubmit = async (data: IDebrief) => {
@@ -59,15 +60,28 @@ export function Debrief() {
         data.accountId = activeAccountId;
 
         try {
+            let res;
             if (currentDebrief && currentDebrief.id && typeof currentDebrief.id === 'string') {
-                await updateDebrief(currentDebrief.id, data);
+                res = await updateDebrief(currentDebrief.id, data);
             } else {
-                await addDebrief(data);
+                res = await addDebrief(data);
             }
+            
+            if (res && res.error) {
+                console.error("Supabase Error:", res.error);
+                setAlertMsg({ title: "Erreur de Sauvegarde", desc: res.error.message || JSON.stringify(res.error), type: 'error' });
+                return;
+            }
+            
             setSaved(true);
-            setTimeout(() => setSaved(false), 2500);
+            setAlertMsg({ title: "Sauvegarde Réussie !", desc: "Ton analyse a été ajoutée au journal avec succès.", type: 'success' });
+            setTimeout(() => {
+                setSaved(false);
+                setAlertMsg(null);
+            }, 3000);
         } catch (error) {
             console.error('Failed to save debrief:', error);
+            setAlertMsg({ title: "Erreur", desc: "Une erreur inattendue s'est produite lors de la sauvegarde.", type: 'error' });
         } finally {
             setIsSaving(false);
         }
@@ -126,8 +140,30 @@ export function Debrief() {
             </aside>
 
             {/* ── Main Panel ──────────────────────────────────── */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="flex-1 overflow-y-auto custom-scrollbar relative">
+                
+                {/* Professional Error / Success Alert Pop-up */}
+                {alertMsg && (
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm animate-fade-scale">
+                        <div className={`glass-card p-4 flex items-start gap-4 ${alertMsg.type === 'success' ? 'border-[#10b981]/30 bg-[#10b981]/10' : 'border-red-500/30 bg-red-500/10'}`}>
+                            <div className={`p-2 rounded-full ${alertMsg.type === 'success' ? 'bg-[#10b981]/20 text-[#10b981]' : 'bg-red-500/20 text-red-400'}`}>
+                                {alertMsg.type === 'success' ? <Check size={16} /> : <Activity size={16} />}
+                            </div>
+                            <div className="flex-1">
+                                <h4 className={`text-sm font-bold ${alertMsg.type === 'success' ? 'text-white' : 'text-red-200'}`}>{alertMsg.title}</h4>
+                                <p className={`text-xs mt-1 ${alertMsg.type === 'success' ? 'text-white/70' : 'text-red-200/70'}`}>{alertMsg.desc}</p>
+                            </div>
+                            <button onClick={() => setAlertMsg(null)} className="text-white/50 hover:text-white transition-colors">
+                                ✖
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                <form onSubmit={form.handleSubmit(onSubmit, (err) => {
+                    const fields = Object.keys(err).join(', ');
+                    setAlertMsg({ title: "Validation requise", desc: `Certains champs sont manquants ou invalides : ${fields}. Veuillez vérifier votre formulaire.`, type: 'error' });
+                })} className="space-y-6">
 
                     {/* Form Header */}
                     <div className="glass-card p-6 relative overflow-hidden candle-bg">
@@ -173,6 +209,36 @@ export function Debrief() {
                             </div>
                         ))}
                     </div>
+
+                    {/* Today's Trades List */}
+                    {dayTrades.length > 0 && (
+                        <div className="glass-card p-4">
+                            <p className="section-label mb-3">Trades de la session</p>
+                            <div className="flex flex-col gap-2">
+                                {dayTrades.map(trade => (
+                                    <div key={trade.id} className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-1.5 h-6 rounded-full ${trade.netPnl && trade.netPnl >= 0 ? 'bg-profit' : 'bg-loss'}`} />
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-sm text-white">{trade.pair}</span>
+                                                    <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase ${trade.position === 'BUY' ? 'bg-primary/20 text-primary-light' : 'bg-red-500/20 text-red-400'}`}>
+                                                        {trade.position}
+                                                    </span>
+                                                </div>
+                                                <span className="text-xs text-text-muted">{format(parseISO(trade.openedAt), 'HH:mm')} • {trade.session}</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className={`font-mono font-bold text-sm ${trade.netPnl && trade.netPnl >= 0 ? 'text-profit' : 'text-loss'}`}>
+                                                {trade.netPnl && trade.netPnl >= 0 ? '+' : ''}{trade.netPnl ? `$${trade.netPnl.toFixed(2)}` : '-'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* HTF Bias visual */}
                     <div className="glass-card p-6">

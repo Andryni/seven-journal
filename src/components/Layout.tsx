@@ -12,6 +12,7 @@ const NAV_ITEMS = (t: any) => [
     { to: '/app/calendar', label: t.common.calendar, Icon: CalendarIcon, exact: false },
     { to: '/app/analytics', label: t.common.analytics, Icon: BarChart2, exact: false },
     { to: '/app/debrief', label: t.navigation.debriefs, Icon: BookOpen, exact: false },
+    { to: '/app/reports', label: t.navigation.reports || 'Reports', Icon: TrendingUp, exact: false },
     { to: '/app/settings', label: t.common.settings, Icon: Settings, exact: true },
 ];
 
@@ -284,7 +285,7 @@ export function Layout() {
                 {/* Nav */}
                 <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
                     <p className="section-label px-2 mb-3">{t.navigation.overview}</p>
-                    {navItems.slice(0, 5).map(({ to, label, Icon, exact }) => {
+                    {navItems.slice(0, 6).map(({ to, label, Icon, exact }) => {
                         const isActive = exact ? location.pathname === to : location.pathname.startsWith(to);
                         return (
                             <Link key={to} to={to} className={`nav-item ${isActive ? 'active' : ''}`}>
@@ -297,7 +298,7 @@ export function Layout() {
 
                     <div className="my-3 h-px bg-white/[0.05]" />
                     <p className="section-label px-2 mb-3">{t.settings.accounts}</p>
-                    {navItems.slice(5).map(({ to, label, Icon, exact }) => {
+                    {navItems.slice(6).map(({ to, label, Icon, exact }) => {
                         const isActive = exact ? location.pathname === to : location.pathname.startsWith(to);
                         return (
                             <Link key={to} to={to} className={`nav-item ${isActive ? 'active' : ''}`}>

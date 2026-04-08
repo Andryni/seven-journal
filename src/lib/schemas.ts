@@ -63,7 +63,7 @@ export const debriefSchema = z.object({
     goodActions: z.string(),
     lessonsLearned: z.string(),
     emotionalState: z.enum(["Focused", "Distracted", "Stressed", "Calm", "Overconfident"]),
-    dayRating: z.number().min(1).max(5),
+    dayRating: z.coerce.number().min(1).max(5),
     createdAt: z.string().optional(),
     updatedAt: z.string().optional()
 });
