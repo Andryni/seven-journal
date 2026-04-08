@@ -32,7 +32,7 @@ export function Debrief() {
     const dayWinrate = dayTrades.length ? (dayTrades.filter(t => t.result === 'TP').length / dayTrades.length) * 100 : 0;
 
     const form = useForm<IDebrief>({
-        resolver: zodResolver(debriefSchema),
+        resolver: zodResolver(debriefSchema) as any,
         defaultValues: {
             accountId: activeAccountId || '', date: selectedDateStr,
             htfBias: 'Neutral', narrative: '', keyLevels: '', chartUrls: [],

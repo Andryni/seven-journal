@@ -2,9 +2,8 @@ import { useState, useMemo, useRef } from 'react';
 import { useTradeStore } from '../store/useTradeStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useTranslation } from '../hooks/useTranslation';
-import { format, parseISO, getYear, getMonth, isSameMonth, isSameYear, startOfMonth, endOfMonth, eachDayOfInterval, getWeek, getDay } from 'date-fns';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "../components/ui/card";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../components/ui/chart";
+import { format, parseISO, getYear, getMonth, startOfMonth, endOfMonth, eachDayOfInterval, getWeek, getDay } from 'date-fns';
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, ReferenceLine, AreaChart, Area, Tooltip } from 'recharts';
 import { TrendingUp, TrendingDown, Target, Flame, Activity, ChevronDown, CalendarDays, BarChart2, Calendar as CalIcon, Download } from 'lucide-react';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -159,8 +158,6 @@ function ReportsContent() {
     const monthlyStats = useMemo(() => {
         const netPnl = monthlyTrades.reduce((acc, t) => acc + (t.netPnl || 0), 0);
         const winsCnt = monthlyTrades.filter(t => (t.netPnl || 0) > 0).length;
-        const lossCnt = monthlyTrades.filter(t => (t.netPnl || 0) < 0).length;
-        const beCnt = monthlyTrades.filter(t => (t.netPnl || 0) === 0).length;
         const totalCnt = monthlyTrades.length;
         const winRate = totalCnt > 0 ? (winsCnt / totalCnt) * 100 : 0;
 
@@ -453,7 +450,7 @@ function ReportsContent() {
                                             <XAxis dataKey="dayNum" tick={axisStyle} tickLine={false} axisLine={false} tickMargin={8} />
                                             <YAxis tick={axisStyle} tickLine={false} axisLine={false} tickFormatter={v => `$${v}`} width={60} />
                                             <ReferenceLine y={0} stroke="rgba(255,255,255,0.12)" strokeDasharray="3 3" />
-                                            <Tooltip {...TOOLTIP_STYLE} formatter={(v: any, name: any, props: any) => [`$${Number(v).toFixed(2)} (${props.payload.count} trades)`, 'Daily P&L']} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                                            <Tooltip {...TOOLTIP_STYLE} formatter={(v: any, _name: any, props: any) => [`$${Number(v).toFixed(2)} (${props.payload.count} trades)`, 'Daily P&L']} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
                                             <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
                                                 {monthlyStats.dailyData.map((e, i) => (
                                                     <Cell key={i} fill={e.pnl >= 0 ? "url(#dayWin)" : "url(#dayLoss)"} stroke={e.pnl >= 0 ? "#10b981" : "#ef4444"} strokeWidth={1} strokeOpacity={0.5} />
@@ -489,7 +486,7 @@ function ReportsContent() {
                                         ))}
 
                                         {/* Actual Days */}
-                                        {monthlyStats.dailyData.map((d, i) => {
+                                        {monthlyStats.dailyData.map((d) => {
                                             const isWin = d.pnl > 0;
                                             const isLoss = d.pnl < 0;
                                             const isTraded = d.count > 0;
