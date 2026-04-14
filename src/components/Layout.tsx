@@ -216,12 +216,7 @@ export function Layout() {
         };
     }, [accountTrades, activeAccountId]);
 
-    const bestPair = useMemo(() => {
-        if (pairStats.length === 0) return globalStats;
-        // If we have stats, pick the one with highest growth, or just show total
-        const sorted = [...pairStats].sort((a, b) => Math.abs(parseFloat(b.change)) - Math.abs(parseFloat(a.change)));
-        return sorted[0];
-    }, [pairStats, globalStats]);
+
 
     const bestSession = useMemo(() => {
         const sessionPnL: Record<string, number> = {};
