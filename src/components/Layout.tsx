@@ -178,29 +178,7 @@ export function Layout() {
         trades.filter(t => t.accountId === activeAccountId),
         [trades, activeAccountId]);
 
-    const pairStats = useMemo(() => {
-        const stats: Record<string, { pnl: number; count: number }> = {};
-        accountTrades.forEach(t => {
-            const tradePnl = t.netPnl !== null ? t.netPnl : t.pnl;
-            if (!t.pair || tradePnl === null) return;
-            if (!stats[t.pair]) stats[t.pair] = { pnl: 0, count: 0 };
-            stats[t.pair].pnl += tradePnl;
-            stats[t.pair].count += 1;
-        });
 
-        const accounts = useAuthStore.getState().accounts;
-        const currentAccount = accounts.find(a => a.id === activeAccountId);
-        const capital = currentAccount?.initialCapital || 10000;
-
-        return Object.entries(stats).map(([pair, data]) => {
-            const percentChange = (data.pnl / capital) * 100;
-            return {
-                pair: pair.replace('/', ''),
-                change: percentChange.toFixed(2),
-                isUp: percentChange >= 0
-            };
-        });
-    }, [accountTrades, activeAccountId]);
 
     const globalStats = useMemo(() => {
         const totalPnL = accountTrades.reduce((sum, t) => sum + (t.netPnl || 0), 0);
