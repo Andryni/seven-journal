@@ -269,7 +269,16 @@ export function Settings() {
                                         <div className="flex justify-between items-end">
                                             <div>
                                                 <p className="section-label mb-0.5">{t.settings.balance}</p>
-                                                <p className="font-mono font-bold text-lg text-white">${acc.currentBalance.toLocaleString()}</p>
+                                                {(() => {
+                                                    const accountTrades = trades.filter(t => t.accountId === acc.id);
+                                                    const totalPnL = accountTrades.reduce((sum, t) => sum + (t.netPnl || 0), 0);
+                                                    const equity = acc.initialCapital + totalPnL;
+                                                    return (
+                                                        <p className="font-mono font-bold text-lg text-white">
+                                                            ${equity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        </p>
+                                                    );
+                                                })()}
                                             </div>
                                             {isActive && (
                                                 <div className="flex flex-col items-end gap-1">

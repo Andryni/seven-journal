@@ -56,6 +56,23 @@ export const useTradeStore = create<TradeState>()(
                 if (data && !error) {
                     const newTrade = mapDbTradeToSchema(data);
                     set((state) => ({ trades: [newTrade, ...state.trades] }));
+
+                    // Update account balance
+                    const pnl = newTrade.netPnl || 0;
+                    const { data: accData } = await supabase
+                        .from('trading_accounts')
+                        .select('current_balance')
+                        .eq('id', newTrade.accountId)
+                        .single();
+                    
+                    if (accData) {
+                        const newBalance = parseFloat(accData.current_balance) + pnl;
+                        await supabase
+                            .from('trading_accounts')
+                            .update({ current_balance: newBalance })
+                            .eq('id', newTrade.accountId);
+                    }
+
                     return { data: newTrade, error: null };
                 }
                 return { data: null, error };
@@ -73,9 +90,31 @@ export const useTradeStore = create<TradeState>()(
                     .eq('id', id);
 
                 if (!error) {
+                    // Calculate PnL difference
+                    const oldPnL = existing.netPnl || 0;
+                    const newPnL = updated.netPnl || 0;
+                    const pnlDiff = newPnL - oldPnL;
+
                     set((state) => ({
                         trades: state.trades.map((t) => t.id === id ? updated : t),
                     }));
+
+                    // Update account balance
+                    if (pnlDiff !== 0) {
+                        const { data: accData } = await supabase
+                            .from('trading_accounts')
+                            .select('current_balance')
+                            .eq('id', updated.accountId)
+                            .single();
+                        
+                        if (accData) {
+                            const newBalance = parseFloat(accData.current_balance) + pnlDiff;
+                            await supabase
+                                .from('trading_accounts')
+                                .update({ current_balance: newBalance })
+                                .eq('id', updated.accountId);
+                        }
+                    }
                 }
                 return { error };
             },
@@ -87,9 +126,28 @@ export const useTradeStore = create<TradeState>()(
                     .eq('id', id);
 
                 if (!error) {
+                    const deletedTrade = get().trades.find(t => t.id === id);
                     set((state) => ({
                         trades: state.trades.filter((t) => t.id !== id),
                     }));
+
+                    // Update account balance (subtract pnl)
+                    if (deletedTrade) {
+                        const pnl = deletedTrade.netPnl || 0;
+                        const { data: accData } = await supabase
+                            .from('trading_accounts')
+                            .select('current_balance')
+                            .eq('id', deletedTrade.accountId)
+                            .single();
+                        
+                        if (accData) {
+                            const newBalance = parseFloat(accData.current_balance) - pnl;
+                            await supabase
+                                .from('trading_accounts')
+                                .update({ current_balance: newBalance })
+                                .eq('id', deletedTrade.accountId);
+                        }
+                    }
                 }
                 return { error };
             },

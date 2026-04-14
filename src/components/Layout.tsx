@@ -181,15 +181,16 @@ export function Layout() {
     const pairStats = useMemo(() => {
         const stats: Record<string, { pnl: number; count: number }> = {};
         accountTrades.forEach(t => {
-            if (!t.pair || t.pnl === null) return;
+            const tradePnl = t.netPnl !== null ? t.netPnl : t.pnl;
+            if (!t.pair || tradePnl === null) return;
             if (!stats[t.pair]) stats[t.pair] = { pnl: 0, count: 0 };
-            stats[t.pair].pnl += t.pnl;
+            stats[t.pair].pnl += tradePnl;
             stats[t.pair].count += 1;
         });
 
-        const activeAccounts = useAuthStore.getState().accounts;
-        const currentAccount = activeAccounts.find(a => a.id === activeAccountId);
-        const capital = currentAccount?.initialCapital || 10000; // fallback capital
+        const accounts = useAuthStore.getState().accounts;
+        const currentAccount = accounts.find(a => a.id === activeAccountId);
+        const capital = currentAccount?.initialCapital || 10000;
 
         return Object.entries(stats).map(([pair, data]) => {
             const percentChange = (data.pnl / capital) * 100;
@@ -201,10 +202,26 @@ export function Layout() {
         });
     }, [accountTrades, activeAccountId]);
 
+    const globalStats = useMemo(() => {
+        const totalPnL = accountTrades.reduce((sum, t) => sum + (t.netPnl || 0), 0);
+        const accounts = useAuthStore.getState().accounts;
+        const currentAccount = accounts.find(a => a.id === activeAccountId);
+        const capital = currentAccount?.initialCapital || 10000;
+        const percentChange = (totalPnL / capital) * 100;
+
+        return {
+            pair: 'TOTAL',
+            change: percentChange.toFixed(2),
+            isUp: percentChange >= 0
+        };
+    }, [accountTrades, activeAccountId]);
+
     const bestPair = useMemo(() => {
-        if (pairStats.length === 0) return { pair: 'TRADES', change: '0.00', isUp: true };
-        return [...pairStats].sort((a, b) => Math.abs(parseFloat(b.change)) - Math.abs(parseFloat(a.change)))[0];
-    }, [pairStats]);
+        if (pairStats.length === 0) return globalStats;
+        // If we have stats, pick the one with highest growth, or just show total
+        const sorted = [...pairStats].sort((a, b) => Math.abs(parseFloat(b.change)) - Math.abs(parseFloat(a.change)));
+        return sorted[0];
+    }, [pairStats, globalStats]);
 
     const bestSession = useMemo(() => {
         const sessionPnL: Record<string, number> = {};
@@ -219,9 +236,26 @@ export function Layout() {
     }, [accountTrades, t]);
 
     const tickerItems = useMemo(() => {
-        if (pairStats.length === 0) return Array(6).fill({ pair: 'TRADES', change: '0.00', isUp: true });
-        return pairStats;
-    }, [pairStats]);
+        const accounts = useAuthStore.getState().accounts;
+        const currentAccount = accounts.find(a => a.id === activeAccountId);
+        const capital = currentAccount?.initialCapital || 10000;
+
+        const last5 = accountTrades
+            .filter(t => t.result !== 'Running' && (t.netPnl !== null || t.pnl !== null))
+            .slice(0, 5)
+            .map(t => {
+                const tradePnl = t.netPnl !== null ? t.netPnl : (t.pnl || 0);
+                const percent = (tradePnl / capital) * 100;
+                return {
+                    pair: t.pair.replace('/', ''),
+                    change: percent.toFixed(2),
+                    isUp: percent >= 0
+                };
+            });
+
+        if (last5.length === 0) return [globalStats];
+        return [...last5, globalStats];
+    }, [accountTrades, globalStats, activeAccountId]);
 
     return (
         <div className="flex h-screen bg-background text-text-primary overflow-hidden relative">
@@ -362,9 +396,9 @@ export function Layout() {
                         <div className="hidden lg:flex items-center gap-4 px-4 py-1.5 rounded-xl border border-white/[0.06]"
                             style={{ background: 'rgba(255,255,255,0.02)' }}>
                             <div className="flex items-center gap-1.5 text-xs">
-                                <TrendingUp size={12} className={bestPair.isUp ? 'text-profit' : 'text-loss'} />
-                                <span className={`font-mono font-semibold ${bestPair.isUp ? 'text-profit' : 'text-loss'}`}>
-                                    {bestPair.pair} {bestPair.isUp ? '+' : ''}{bestPair.change}%
+                                <TrendingUp size={12} className={globalStats.isUp ? 'text-profit' : 'text-loss'} />
+                                <span className={`font-mono font-semibold ${globalStats.isUp ? 'text-profit' : 'text-loss'}`}>
+                                    {globalStats.pair} {globalStats.isUp ? '+' : ''}{globalStats.change}%
                                 </span>
                             </div>
                             <div className="w-px h-4 bg-white/10" />

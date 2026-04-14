@@ -9,9 +9,137 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useEffect, useState } from 'react';
 import {
     ArrowLeft, Save, BookOpen as _BookOpen, Shield,
-    Target, Brain, Camera, Tag, FileText, ChevronDown, Zap, DollarSign, Percent
+    Target, Brain, Camera, Tag, FileText, ChevronDown, Zap, DollarSign, Percent,
+    Trash2, Upload, X
 } from 'lucide-react';
 import { useTranslation } from '../hooks/useTranslation';
+import { supabase } from '../lib/supabase';
+
+/* ── Small reusable components ─────────────────────────────── */
+function ImageUpload({
+    label,
+    value,
+    onChange,
+    onUploading,
+    t
+}: {
+    label: string;
+    value: string;
+    onChange: (url: string) => void;
+    onUploading?: (status: boolean) => void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    t: any;
+}) {
+    const [isUploading, setIsUploading] = useState(false);
+    const [dragActive, setDragActive] = useState(false);
+
+    const handleUpload = async (file: File) => {
+        try {
+            setIsUploading(true);
+            onUploading?.(true);
+
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+            const filePath = `setups/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('trades')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('trades')
+                .getPublicUrl(filePath);
+
+            onChange(publicUrl);
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            alert('Failed to upload image. Please ensure a "trades" bucket exists in your Supabase storage.');
+        } finally {
+            setIsUploading(false);
+            onUploading?.(false);
+        }
+    };
+
+    const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            handleUpload(e.target.files[0]);
+        }
+    };
+
+    return (
+        <div className="space-y-2">
+            <Label>{label}</Label>
+            <div
+                className={`relative group rounded-xl border-2 border-dashed transition-all overflow-hidden flex flex-col items-center justify-center bg-white/[0.02] ${dragActive ? 'border-violet-500 bg-violet-500/5' : 'border-white/10 hover:border-white/20'}`}
+                style={{ aspectRatio: '16/9' }}
+                onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                onDragLeave={() => setDragActive(false)}
+                onDrop={(e) => { e.preventDefault(); setDragActive(false); if (e.dataTransfer.files?.[0]) handleUpload(e.dataTransfer.files[0]); }}
+            >
+                {value ? (
+                    <>
+                        <img src={value} alt="Preview" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <label className="cursor-pointer p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md transition-all">
+                                <Upload size={16} />
+                                <input type="file" className="hidden" accept="image/*" onChange={onFileChange} disabled={isUploading} />
+                            </label>
+                            <button
+                                type="button"
+                                onClick={() => onChange('')}
+                                className="p-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/20 backdrop-blur-md transition-all"
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                        </div>
+                    </>
+                ) : (
+                    <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center gap-3 hover:bg-white/[0.04] transition-all">
+                        {isUploading ? (
+                            <div className="flex flex-col items-center gap-3">
+                                <div className="w-6 h-6 rounded-full border-2 border-white/10 border-t-violet-500 animate-spin" />
+                                <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">{t.common.loading}</span>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.05]">
+                                    <Camera size={22} className="text-white/20" />
+                                </div>
+                                <div className="text-center px-4">
+                                    <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.15em] mb-1">{t.common.importImage}</p>
+                                    <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest">{t.common.dropOrClick}</p>
+                                </div>
+                            </>
+                        )}
+                        <input type="file" className="hidden" accept="image/*" onChange={onFileChange} disabled={isUploading} />
+                    </label>
+                )}
+            </div>
+            {/* Fallback URL input */}
+            <div className="relative mt-2">
+                <input
+                    type="url"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder="Ou collez une URL directe..."
+                    className="w-full pl-8 pr-3 py-2 rounded-lg text-[11px] text-white/50 bg-white/[0.03] border border-white/[0.06] outline-none focus:border-violet-500/30 transition-all font-mono"
+                />
+                <Camera size={11} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" />
+                {value && (
+                    <button
+                        type="button"
+                        onClick={() => onChange('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:text-white transition-colors"
+                    >
+                        <X size={10} />
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+}
 
 /* ── Small reusable components ─────────────────────────────── */
 function SectionHeader({ icon: Icon, label, color = '#a78bfa' }: { icon: React.ElementType; label: string; color?: string }) {
@@ -181,6 +309,7 @@ export function TradeForm() {
     const isEditing = !!id;
     const { addTrade, updateTrade, getTradeById } = useTradeStore();
     const [isSaving, setIsSaving] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     const activeAccountId = useAuthStore(state => state.currentUser?.activeAccountId);
 
     /* Risk / Gain mode states */
@@ -286,14 +415,23 @@ export function TradeForm() {
 
         try {
             console.log('Saving trade...', data);
+            let response;
             if (isEditing && id) {
-                await updateTrade(id, data);
+                response = await updateTrade(id, data);
             } else {
-                await addTrade(data);
+                response = await addTrade(data);
             }
-            navigate('/app/trades');
+
+            if (response && response.error) {
+                console.error('Record error:', response.error);
+                alert(`Erreur: ${response.error.message || 'Impossible d\'enregistrer le trade'}`);
+                setIsSaving(false);
+            } else {
+                navigate('/app/trades');
+            }
         } catch (error) {
             console.error('Failed to save trade:', error);
+            alert('Une erreur inattendue est survenue.');
             setIsSaving(false);
         }
     };
@@ -501,27 +639,21 @@ export function TradeForm() {
                             </div>
                         </div>
 
-                        <div>
-                            <Label>{t.tradeForm.setupScreenshot} ({t.common.before})</Label>
-                            <div className="relative">
-                                <Camera size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.25)' }} />
-                                <input type="url" {...register('setupBeforeUrl')}
-                                    className="w-full pl-8 pr-3 py-2.5 rounded-xl text-sm text-white outline-none transition-all focus:border-violet-500/50"
-                                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-                                    placeholder="https://…" />
-                            </div>
-                        </div>
+                        <ImageUpload
+                            label={`${t.tradeForm.setupScreenshot} (${t.common.before})`}
+                            value={watch('setupBeforeUrl')}
+                            onChange={v => setValue('setupBeforeUrl', v)}
+                            onUploading={setIsUploading}
+                            t={t}
+                        />
 
-                        <div>
-                            <Label>{t.tradeForm.setupScreenshot} ({t.common.after})</Label>
-                            <div className="relative">
-                                <Camera size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.25)' }} />
-                                <input type="url" {...register('setupAfterUrl')}
-                                    className="w-full pl-8 pr-3 py-2.5 rounded-xl text-sm text-white outline-none transition-all focus:border-violet-500/50"
-                                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-                                    placeholder="https://…" />
-                            </div>
-                        </div>
+                        <ImageUpload
+                            label={`${t.tradeForm.setupScreenshot} (${t.common.after})`}
+                            value={watch('setupAfterUrl')}
+                            onChange={v => setValue('setupAfterUrl', v)}
+                            onUploading={setIsUploading}
+                            t={t}
+                        />
                     </div>
                 </div>
 
@@ -589,11 +721,11 @@ export function TradeForm() {
                         onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}>
                         {t.common.cancel}
                     </button>
-                    <button type="submit" disabled={isSaving} className="btn-primary px-8 py-2.5 gap-2">
-                        {isSaving ? (
+                    <button type="submit" disabled={isSaving || isUploading} className="btn-primary px-8 py-2.5 gap-2">
+                        {isSaving || isUploading ? (
                             <span className="flex items-center gap-2">
                                 <span className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-                                {t.common.saving}
+                                {isUploading ? t.common.loading : t.common.saving}
                             </span>
                         ) : (
                             <>
