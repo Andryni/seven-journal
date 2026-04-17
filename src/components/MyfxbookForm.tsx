@@ -105,6 +105,14 @@ export function MyfxbookForm({ accountId, onConnected }: { accountId?: string, o
             const syncResult = await syncRes.json();
             console.log(`[MYFXBOOK] Sync complete. Imported ${syncResult.count} trades.`);
 
+            // PERSIST CONNECTION DETAILS TO DATABASE
+            await useAuthStore.getState().updateAccount(targetAccountId!, {
+                myfxbookAccountId: mfId,
+                myfxbookEmail: email,
+                myfxbookPassword: password,
+                connectionMethod: 'myfxbook'
+            });
+
             await setActiveAccount(targetAccountId!);
             if (currentUser) {
                 await useAuthStore.getState().fetchAccounts(currentUser.id);

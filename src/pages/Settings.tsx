@@ -306,43 +306,86 @@ export function Settings() {
                                             )}
                                         </div>
 
-                                        {/* Connection Section - Only show if not synced and not manual */}
-                                        {isActive && !acc.metaapiAccountId && !acc.myfxbookAccountId && acc.connectionMethod !== 'manual' && !hasAccountTrades && (
-                                            <div className="mt-6 pt-6 border-t border-white/[0.05] space-y-6">
-                                                <div className="flex items-center gap-2 p-1 rounded-xl bg-white/5 border border-white/10 w-fit">
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); setConnectionMethod('metaapi'); }}
-                                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${connectionMethod === 'metaapi' ? 'bg-primary-light/20 text-primary-light border border-primary-light/30' : 'text-text-muted hover:text-white'}`}
-                                                    >
-                                                        MetaApi (Auto)
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); setConnectionMethod('myfxbook'); }}
-                                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${connectionMethod === 'myfxbook' ? 'bg-primary-light/20 text-primary-light border border-primary-light/30' : 'text-text-muted hover:text-white'}`}
-                                                    >
-                                                        Myfxbook (Auto)
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); setConnectionMethod('mql5'); }}
-                                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${connectionMethod === 'mql5' ? 'bg-primary-light/20 text-primary-light border border-primary-light/30' : 'text-text-muted hover:text-white'}`}
-                                                    >
-                                                        MQL5 (Free)
-                                                    </button>
-                                                </div>
+                                         {/* Connection Section */}
+                                         {isActive && acc.connectionMethod !== 'manual' && (
+                                             <div className="mt-6 pt-6 border-t border-white/[0.05] space-y-6">
+                                                 {/* Already Connected State */}
+                                                 {(acc.metaapiAccountId || acc.myfxbookAccountId || hasAccountTrades) ? (
+                                                     <div className="p-4 rounded-2xl space-y-4 animate-fade-in" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                         <div className="flex items-center justify-between">
+                                                             <div className="flex items-center gap-3">
+                                                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${acc.metaapiAccountId ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
+                                                                     {acc.metaapiAccountId ? <Zap size={20} /> : <BarChart3 size={20} />}
+                                                                 </div>
+                                                                 <div>
+                                                                     <p className="font-bold text-white text-sm">Account Synced</p>
+                                                                     <p className="text-[10px] text-text-muted uppercase tracking-widest font-bold">
+                                                                         {acc.metaapiAccountId ? 'MetaApi Connection' : acc.myfxbookAccountId ? 'Myfxbook Connection' : 'MQL5 Signal'}
+                                                                     </p>
+                                                                 </div>
+                                                             </div>
+                                                             <div className="flex items-center gap-2">
+                                                                 <button
+                                                                     onClick={async (e) => {
+                                                                        e.stopPropagation();
+                                                                        if (window.confirm('Are you sure you want to disconnect this account? Trades will remain but auto-sync will stop.')) {
+                                                                            await useAuthStore.getState().updateAccount(acc.id, {
+                                                                                metaapiAccountId: null,
+                                                                                myfxbookAccountId: null,
+                                                                                connectionMethod: 'manual'
+                                                                            });
+                                                                        }
+                                                                     }}
+                                                                     className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-loss transition-all hover:bg-loss/10 border border-loss/20"
+                                                                 >
+                                                                     Disconnect
+                                                                 </button>
+                                                             </div>
+                                                         </div>
+                                                        <div className="flex items-center gap-2 p-3 rounded-xl bg-profit/5 border border-profit/10">
+                                                            <CheckCircle size={14} className="text-profit" />
+                                                            <p className="text-[11px] text-profit font-medium">Auto-sync is active. Your dashboard updates every few minutes.</p>
+                                                        </div>
+                                                     </div>
+                                                 ) : (
+                                                     /* Not Connected - Show Methods */
+                                                     <>
+                                                         <div className="flex items-center gap-2 p-1 rounded-xl bg-white/5 border border-white/10 w-fit">
+                                                             <button
+                                                                 onClick={(e) => { e.stopPropagation(); setConnectionMethod('metaapi'); }}
+                                                                 className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${connectionMethod === 'metaapi' ? 'bg-primary-light/20 text-primary-light border border-primary-light/30' : 'text-text-muted hover:text-white'}`}
+                                                             >
+                                                                 MetaApi (Auto)
+                                                             </button>
+                                                             <button
+                                                                 onClick={(e) => { e.stopPropagation(); setConnectionMethod('myfxbook'); }}
+                                                                 className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${connectionMethod === 'myfxbook' ? 'bg-primary-light/20 text-primary-light border border-primary-light/30' : 'text-text-muted hover:text-white'}`}
+                                                             >
+                                                                 Myfxbook (Auto)
+                                                             </button>
+                                                             <button
+                                                                 onClick={(e) => { e.stopPropagation(); setConnectionMethod('mql5'); }}
+                                                                 className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${connectionMethod === 'mql5' ? 'bg-primary-light/20 text-primary-light border border-primary-light/30' : 'text-text-muted hover:text-white'}`}
+                                                             >
+                                                                 MQL5 (Free)
+                                                             </button>
+                                                         </div>
 
-                                                <div className="animate-fade-in">
-                                                    <ErrorBoundary>
-                                                        {connectionMethod === 'metaapi' ? (
-                                                            <MetaApiForm accountId={acc.id} />
-                                                        ) : connectionMethod === 'myfxbook' ? (
-                                                            <MyfxbookForm accountId={acc.id} />
-                                                        ) : (
-                                                            <Mql5WebhookForm accountId={acc.id} />
-                                                        )}
-                                                    </ErrorBoundary>
-                                                </div>
-                                            </div>
-                                        )}
+                                                         <div className="animate-fade-in">
+                                                             <ErrorBoundary>
+                                                                 {connectionMethod === 'metaapi' ? (
+                                                                     <MetaApiForm accountId={acc.id} />
+                                                                 ) : connectionMethod === 'myfxbook' ? (
+                                                                     <MyfxbookForm accountId={acc.id} />
+                                                                 ) : (
+                                                                     <Mql5WebhookForm accountId={acc.id} />
+                                                                 )}
+                                                             </ErrorBoundary>
+                                                         </div>
+                                                     </>
+                                                 )}
+                                             </div>
+                                         )}
                                     </div>
                                 );
                             })}
