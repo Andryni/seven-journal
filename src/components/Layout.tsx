@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, LogOut, Settings, List, Calendar as CalendarIcon, BarChart2, BookOpen, TrendingUp, Zap, ChevronRight, ChevronDown, Plus, Wallet, Menu, X as CloseIcon } from 'lucide-react';
+import { LayoutDashboard, LogOut, Settings, List, Calendar as CalendarIcon, BarChart2, BookOpen, TrendingUp, Zap, ChevronRight, ChevronDown, Plus, Wallet, Menu, X as CloseIcon, ClipboardCheck } from 'lucide-react';
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useTradeStore } from '../store/useTradeStore';
 import { useDebriefStore } from '../store/useDebriefStore';
@@ -147,6 +147,26 @@ export function Layout() {
     const currentUser = useAuthStore(state => state.currentUser);
     const logout = useAuthStore(state => state.logout);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isChecklistOpen, setIsChecklistOpen] = useState(false);
+    const [checklistRules, setChecklistRules] = useState<{ id: number; text: string; checked: boolean }[]>(() => {
+        const saved = localStorage.getItem('seven-discipline-checklist');
+        if (saved) {
+            try { return JSON.parse(saved); } catch (e) { /* ignore */ }
+        }
+        return [
+            { id: 1, text: "Verify Risk limit (Max 1-2% per trade)", checked: false },
+            { id: 2, text: "Higher Timeframe (HTF) bias aligned", checked: false },
+            { id: 3, text: "Check economic calendar for high impact news", checked: false },
+            { id: 4, text: "Wait for clear setup with 3 confluences", checked: false },
+            { id: 5, text: "Ensure planned Risk-to-Reward is at least 1:2", checked: false },
+            { id: 6, text: "Confirm mental state is calm and free of FOMO", checked: false }
+        ];
+    });
+
+    useEffect(() => {
+        localStorage.setItem('seven-discipline-checklist', JSON.stringify(checklistRules));
+    }, [checklistRules]);
+
     const { t } = useTranslation();
 
     const navItems = NAV_ITEMS(t);
@@ -380,6 +400,25 @@ export function Layout() {
                                 <span className="font-mono font-semibold" style={{ color: '#06b6d4' }}>{bestSession}</span>
                             </div>
                         </div>
+                        <button
+                            onClick={() => setIsChecklistOpen(true)}
+                            className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-[10px] md:text-xs font-bold transition-all"
+                            style={{
+                                background: 'rgba(124,58,237,0.15)',
+                                border: '1px solid rgba(124,58,237,0.3)',
+                                color: '#a78bfa'
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(124,58,237,0.25)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(124,58,237,0.15)'; }}
+                        >
+                            <ClipboardCheck size={14} />
+                            <span className="hidden sm:inline">Discipline Rules</span>
+                            {checklistRules.filter(r => r.checked).length > 0 && (
+                                <span className="w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black" style={{ background: '#7c3aed', color: '#fff' }}>
+                                    {checklistRules.filter(r => r.checked).length}
+                                </span>
+                            )}
+                        </button>
                         <Link to="/app/trades/new" className="btn-primary text-[10px] md:text-xs px-3 py-1.5 md:px-4 md:py-2">
                             <span className="text-base md:text-base leading-none">+</span> <span className="hidden xs:inline">{t.common.newTrade}</span>
                         </Link>
@@ -392,6 +431,97 @@ export function Layout() {
                     </div>
                 </div>
             </main>
+
+            {/* ── Discipline Rules Drawer ── */}
+            {isChecklistOpen && (
+                <>
+                    <div
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity duration-300 animate-fade-scale"
+                        onClick={() => setIsChecklistOpen(false)}
+                    />
+                    <div
+                        className="fixed inset-y-0 right-0 w-full max-w-md z-50 flex flex-col shadow-2xl border-l border-white/[0.05] animate-slide-up"
+                        style={{ background: 'linear-gradient(180deg, #0b0b12 0%, #080810 100%)' }}
+                    >
+                        {/* Header */}
+                        <div className="p-6 border-b border-white/[0.05] flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                                <ClipboardCheck size={20} style={{ color: '#a78bfa' }} />
+                                <div>
+                                    <h3 className="font-bold text-white text-base">Discipline Checklist</h3>
+                                    <p className="text-[10px] text-text-muted mt-0.5">Rules to review and check off daily</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setIsChecklistOpen(false)}
+                                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+                            >
+                                <CloseIcon size={16} className="text-white/50" />
+                            </button>
+                        </div>
+
+                        {/* Rules List */}
+                        <div className="flex-1 p-6 space-y-3 overflow-y-auto custom-scrollbar">
+                            {checklistRules.map(rule => (
+                                <button
+                                    key={rule.id}
+                                    onClick={() => {
+                                        setChecklistRules(prev => prev.map(r => r.id === rule.id ? { ...r, checked: !r.checked } : r));
+                                    }}
+                                    className="flex items-start gap-4.5 w-full p-4 rounded-2xl text-left transition-all duration-200 border"
+                                    style={{
+                                        background: rule.checked ? 'rgba(16,185,129,0.06)' : 'rgba(255,255,255,0.01)',
+                                        borderColor: rule.checked ? 'rgba(16,185,129,0.35)' : 'rgba(255,255,255,0.06)',
+                                    }}
+                                >
+                                    <div
+                                        className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 border"
+                                        style={{
+                                            background: rule.checked ? 'rgba(16,185,129,0.2)' : 'transparent',
+                                            borderColor: rule.checked ? '#10b981' : 'rgba(255,255,255,0.2)',
+                                        }}
+                                    >
+                                        {rule.checked && <span className="text-[10px] text-profit font-black">✓</span>}
+                                    </div>
+                                    <div className="flex-1 min-w-0 ml-2">
+                                        <p
+                                            className="text-xs font-semibold leading-relaxed"
+                                            style={{
+                                                color: rule.checked ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.75)',
+                                                textDecoration: rule.checked ? 'line-through' : 'none'
+                                            }}
+                                        >
+                                            {rule.text}
+                                        </p>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Footer / Summary */}
+                        <div className="p-6 border-t border-white/[0.05] bg-black/20 flex flex-col gap-3">
+                            <div className="flex items-center justify-between text-xs">
+                                <span className="text-text-muted">Progress</span>
+                                <span className="font-mono font-bold text-white">
+                                    {checklistRules.filter(r => r.checked).length} / {checklistRules.length} Completed
+                                </span>
+                            </div>
+                            <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
+                                <div
+                                    className="bg-gradient-to-r from-violet-500 to-emerald-500 h-full transition-all duration-300"
+                                    style={{ width: `${(checklistRules.filter(r => r.checked).length / checklistRules.length) * 100}%` }}
+                                />
+                            </div>
+                            <button
+                                onClick={() => setChecklistRules(prev => prev.map(r => ({ ...r, checked: false })))}
+                                className="mt-2 w-full py-2.5 rounded-xl text-xs font-bold transition-all border border-red-500/20 text-red-400 bg-red-500/5 hover:bg-red-500/10 justify-center flex"
+                            >
+                                Reset All Rules
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 }

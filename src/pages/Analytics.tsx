@@ -9,7 +9,7 @@ import { format, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOf
 import { useMemo, useState, useRef, useEffect } from 'react';
 import {
     TrendingUp, TrendingDown, Target, Activity, Zap,
-    Award, Flame, Calendar as CalIcon, ChevronDown, Clock, Layers, Calendar as LucideCalendar, BarChart3, AlertTriangle
+    Award, Flame, Calendar as CalIcon, ChevronDown, Clock, Layers, Calendar as LucideCalendar, BarChart3, AlertTriangle, Brain
 } from 'lucide-react';
 import type { Trade } from '../lib/schemas';
 import { useTranslation } from '../hooks/useTranslation';
@@ -253,6 +253,66 @@ export function Analytics() {
             return Object.entries(groups).map(([name, data]) => ({ name, ...data }));
         };
 
+        // Rich breakdown: winRate, avgWin, avgLoss, profitFactor, trades, bestRR
+        const groupByDetailed = (key: keyof Trade) => {
+            const groups: Record<string, {
+                trades: Trade[];
+            }> = {};
+            for (const t of closedTrades) {
+                const val = t[key] as string;
+                if (!val) continue;
+                if (!groups[val]) groups[val] = { trades: [] };
+                groups[val].trades.push(t);
+            }
+            return Object.entries(groups).map(([name, { trades: g }]) => {
+                const wins = g.filter(t => (t.netPnl || 0) > 0);
+                const losses = g.filter(t => (t.netPnl || 0) < 0);
+                const totalP = wins.reduce((a, t) => a + (t.netPnl || 0), 0);
+                const totalL = Math.abs(losses.reduce((a, t) => a + (t.netPnl || 0), 0));
+                const winRate = g.length > 0 ? (wins.length / g.length) * 100 : 0;
+                const avgWinG = wins.length > 0 ? totalP / wins.length : 0;
+                const avgLossG = losses.length > 0 ? totalL / losses.length : 0;
+                const pf = totalL > 0 ? totalP / totalL : totalP > 0 ? Infinity : 0;
+                const netPnL = totalP - totalL;
+                const bestRR = g.reduce((best, t) => Math.max(best, t.actualRR || t.plannedRR || 0), 0);
+                const expectancyG = ((winRate / 100) * avgWinG) - (((100 - winRate) / 100) * avgLossG);
+                return {
+                    name,
+                    trades: g.length,
+                    wins: wins.length,
+                    losses: losses.length,
+                    winRate: parseFloat(winRate.toFixed(1)),
+                    netPnL: parseFloat(netPnL.toFixed(2)),
+                    avgWin: parseFloat(avgWinG.toFixed(2)),
+                    avgLoss: parseFloat(avgLossG.toFixed(2)),
+                    profitFactor: pf === Infinity ? 9999 : parseFloat(pf.toFixed(2)),
+                    expectancy: parseFloat(expectancyG.toFixed(2)),
+                    bestRR: parseFloat(bestRR.toFixed(2)),
+                };
+            }).sort((a, b) => b.netPnL - a.netPnL);
+        };
+
+        const expectancy = ((winrate / 100) * avgWin) - (((100 - winrate) / 100) * avgLoss);
+
+        const groupByEmotion = (key: 'emotionBefore' | 'emotionAfter') => {
+            const groups: Record<string, { name: string; pnl: number; count: number; win: number; loss: number }> = {};
+            for (const t of closedTrades) {
+                const val = t[key];
+                if (!val) continue;
+                if (!groups[val]) groups[val] = { name: val, pnl: 0, count: 0, win: 0, loss: 0 };
+                groups[val].pnl += (t.netPnl || 0);
+                groups[val].count += 1;
+                if ((t.netPnl || 0) > 0) groups[val].win += 1;
+                else if ((t.netPnl || 0) < 0) groups[val].loss += 1;
+            }
+            return Object.values(groups).map(g => ({
+                name: g.name,
+                pnl: parseFloat(g.pnl.toFixed(2)),
+                winRate: g.count > 0 ? parseFloat(((g.win / g.count) * 100).toFixed(1)) : 0,
+                count: g.count
+            })).sort((a, b) => b.pnl - a.pnl);
+        };
+
         const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
         const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const dayPerformance = DAY_ORDER.map(idx => {
@@ -267,12 +327,16 @@ export function Analytics() {
 
         return {
             winsCount, lossesCount, besCount, winrate, totalPnL, profitFactor,
-            avgWin, avgLoss, maxDD,
+            avgWin, avgLoss, maxDD, expectancy,
             sessionData: groupBy('session'),
             pairData: groupBy('pair'),
             strategyData: groupBy('strategy'),
             timeframeData: groupByStacked('timeframe'),
-            dayPerformance
+            emotionBeforeData: groupByEmotion('emotionBefore'),
+            emotionAfterData: groupByEmotion('emotionAfter'),
+            dayPerformance,
+            pairDetailed: groupByDetailed('pair'),
+            sessionDetailed: groupByDetailed('session'),
         };
     }, [closedTrades, initialBalance]);
 
@@ -312,10 +376,11 @@ export function Analytics() {
             </div>
 
             {/* ── KPI Cards ────────────────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 <MetricCard title="Net P&L" value={`${isProfit ? '+' : ''}$${stats.totalPnL.toFixed(2)}`} icon={<TrendingUp size={16} />} color={isProfit ? 'profit' : 'loss'} sub={`${closedTrades.length} closed trades`} />
-                <MetricCard title="Win Rate" value={`${stats.winrate.toFixed(1)}%`} icon={<Target size={16} />} color="primary" sub={`${stats.winsCount}W / ${stats.lossesCount}L / ${stats.besCount}BE`} />
-                <MetricCard title={t.analytics.profitFactor} value={stats.profitFactor === Infinity ? '∞' : stats.profitFactor.toFixed(2)} icon={<Flame size={16} />} color={stats.profitFactor >= 1.5 ? 'profit' : 'loss'} sub={`Avg Win $${stats.avgWin.toFixed(0)} / Avg Loss $${stats.avgLoss.toFixed(0)}`} />
+                <MetricCard title="Win Rate" value={`${stats.winrate.toFixed(1)}%`} icon={<Target size={16} />} color="primary" sub={`${stats.winsCount}W / ${stats.lossesCount}L`} />
+                <MetricCard title="Expectancy" value={`${stats.expectancy >= 0 ? '+' : ''}$${stats.expectancy.toFixed(2)}`} icon={<Activity size={16} />} color={stats.expectancy >= 0 ? 'profit' : 'loss'} sub="Avg profit per execution" />
+                <MetricCard title="Profit Factor" value={stats.profitFactor === Infinity ? '∞' : stats.profitFactor.toFixed(2)} icon={<Flame size={16} />} color={stats.profitFactor >= 1.5 ? 'profit' : 'loss'} sub={`Avg Win $${stats.avgWin.toFixed(0)} / Avg Loss $${stats.avgLoss.toFixed(0)}`} />
                 <MetricCard title="Max Drawdown" value={`${stats.maxDD.toFixed(1)}%`} icon={<TrendingDown size={16} />} color="orange" sub="Peak-to-trough decline" />
             </div>
 
@@ -613,6 +678,143 @@ export function Analytics() {
                 </Card>
             </div>
 
+            {/* ── Row 3.5: Detailed Breakdowns (Pair & Session) ───────────────── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Asset Detailed */}
+                <Card className="glass-card p-0 border-none overflow-hidden relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#10b981]/5 to-transparent pointer-events-none" />
+                    <CardHeader className="p-6 pb-4 border-b border-white/5 relative z-10">
+                        <CardDescription className="section-label mb-1">ASSET BREAKDOWN</CardDescription>
+                        <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
+                            <Layers size={18} className="text-[#10b981]" /> Asset Performance Overview
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0 relative z-10">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-white/[0.01] text-[10px] uppercase font-bold text-white/30 tracking-wider">
+                                        <th className="px-6 py-3 font-mono whitespace-nowrap">Asset</th>
+                                        <th className="px-6 py-3 text-right font-mono whitespace-nowrap">Trades</th>
+                                        <th className="px-6 py-3 text-right font-mono whitespace-nowrap">WinRate</th>
+                                        <th className="px-6 py-3 text-right font-mono whitespace-nowrap">Avg W/L</th>
+                                        <th className="px-6 py-3 text-right font-mono whitespace-nowrap">Expectancy</th>
+                                        <th className="px-6 py-3 text-right font-mono whitespace-nowrap">Net P&L</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-sm">
+                                    {stats.pairDetailed.length > 0 ? stats.pairDetailed.map((row, i) => (
+                                        <tr key={row.name} className={`border-b border-white/[0.02] hover:bg-white/[0.03] transition-colors ${i % 2 === 0 ? 'bg-white/[0.005]' : ''}`}>
+                                            <td className="px-6 py-4 font-bold text-white/90 whitespace-nowrap">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center text-[10px] text-white/50 border border-white/10 font-mono">
+                                                        {row.name.slice(0, 2)}
+                                                    </div>
+                                                    {row.name}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                <div className="text-white/70 font-mono">{row.trades}</div>
+                                                <div className="text-[10px] text-white/40 mt-0.5"><span className="text-[#10b981]/70">{row.wins}W</span> <span className="text-[#ef4444]/70">{row.losses}L</span></div>
+                                            </td>
+                                            <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <div className="w-12 h-1.5 rounded-full bg-white/10 overflow-hidden relative">
+                                                        <div className="absolute top-0 left-0 h-full rounded-full transition-all duration-1000" style={{ width: `${row.winRate}%`, backgroundColor: row.winRate >= 50 ? '#10b981' : row.winRate > 0 ? '#ef4444' : 'transparent' }} />
+                                                    </div>
+                                                    <span className={`text-[12px] font-mono ${row.winRate >= 50 ? 'text-[#10b981] font-bold' : row.winRate > 0 ? 'text-[#ef4444] font-bold' : 'text-white/30'}`}>{row.winRate}%</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-mono text-[12px] whitespace-nowrap">
+                                                <span className="text-[#10b981]/90">${row.avgWin}</span> <span className="text-white/20 mx-1">/</span> <span className="text-[#ef4444]/90">-${row.avgLoss}</span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-mono text-[12px] whitespace-nowrap">
+                                                <span className={`px-2 py-0.5 rounded-md inline-block ${row.expectancy > 0 ? 'bg-[#10b981]/10 text-[#10b981] border border-[#10b981]/20' : row.expectancy < 0 ? 'bg-[#ef4444]/10 text-[#ef4444] border border-[#ef4444]/20' : 'text-white/30'}`}>
+                                                    {row.expectancy > 0 ? '+' : ''}{row.expectancy > 0 || row.expectancy < 0 ? `$${row.expectancy}` : '-'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-bold font-mono whitespace-nowrap">
+                                                <span className={row.netPnL > 0 ? 'text-[#10b981] drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]' : row.netPnL < 0 ? 'text-[#ef4444] drop-shadow-[0_0_8px_rgba(239,68,68,0.3)]' : 'text-white/30'}>
+                                                    {row.netPnL > 0 ? '+' : ''}${row.netPnL}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr><td colSpan={6} className="px-6 py-8 text-center text-white/20 text-xs italic">No asset data available.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Session Detailed */}
+                <Card className="glass-card p-0 border-none overflow-hidden relative">
+                    <div className="absolute inset-0 bg-gradient-to-bl from-[#a78bfa]/5 to-transparent pointer-events-none" />
+                    <CardHeader className="p-6 pb-4 border-b border-white/5 relative z-10">
+                        <CardDescription className="section-label mb-1">SESSION BREAKDOWN</CardDescription>
+                        <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
+                            <Activity size={18} className="text-[#a78bfa]" /> Session Performance Overview
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0 relative z-10">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-white/[0.01] text-[10px] uppercase font-bold text-white/30 tracking-wider">
+                                        <th className="px-6 py-3 font-mono whitespace-nowrap">Session</th>
+                                        <th className="px-6 py-3 text-right font-mono whitespace-nowrap">Trades</th>
+                                        <th className="px-6 py-3 text-right font-mono whitespace-nowrap">WinRate</th>
+                                        <th className="px-6 py-3 text-right font-mono whitespace-nowrap">Avg W/L</th>
+                                        <th className="px-6 py-3 text-right font-mono whitespace-nowrap">Expectancy</th>
+                                        <th className="px-6 py-3 text-right font-mono whitespace-nowrap">Net P&L</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-sm">
+                                    {stats.sessionDetailed.length > 0 ? stats.sessionDetailed.map((row, i) => (
+                                        <tr key={row.name} className={`border-b border-white/[0.02] hover:bg-white/[0.03] transition-colors ${i % 2 === 0 ? 'bg-white/[0.005]' : ''}`}>
+                                            <td className="px-6 py-4 font-bold text-white/90 capitalize whitespace-nowrap">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-2 h-2 rounded-full bg-[#a78bfa] shadow-[0_0_8px_rgba(167,139,250,0.5)]" />
+                                                    {row.name}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                <div className="text-white/70 font-mono">{row.trades}</div>
+                                                <div className="text-[10px] text-white/40 mt-0.5"><span className="text-[#10b981]/70">{row.wins}W</span> <span className="text-[#ef4444]/70">{row.losses}L</span></div>
+                                            </td>
+                                            <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <div className="w-12 h-1.5 rounded-full bg-white/10 overflow-hidden relative">
+                                                        <div className="absolute top-0 left-0 h-full rounded-full transition-all duration-1000" style={{ width: `${row.winRate}%`, backgroundColor: row.winRate >= 50 ? '#10b981' : row.winRate > 0 ? '#ef4444' : 'transparent' }} />
+                                                    </div>
+                                                    <span className={`text-[12px] font-mono ${row.winRate >= 50 ? 'text-[#10b981] font-bold' : row.winRate > 0 ? 'text-[#ef4444] font-bold' : 'text-white/30'}`}>{row.winRate}%</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-mono text-[12px] whitespace-nowrap">
+                                                <span className="text-[#10b981]/90">${row.avgWin}</span> <span className="text-white/20 mx-1">/</span> <span className="text-[#ef4444]/90">-${row.avgLoss}</span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-mono text-[12px] whitespace-nowrap">
+                                                <span className={`px-2 py-0.5 rounded-md inline-block ${row.expectancy > 0 ? 'bg-[#10b981]/10 text-[#10b981] border border-[#10b981]/20' : row.expectancy < 0 ? 'bg-[#ef4444]/10 text-[#ef4444] border border-[#ef4444]/20' : 'text-white/30'}`}>
+                                                    {row.expectancy > 0 ? '+' : ''}{row.expectancy > 0 || row.expectancy < 0 ? `$${row.expectancy}` : '-'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-bold font-mono whitespace-nowrap">
+                                                <span className={row.netPnL > 0 ? 'text-[#10b981] drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]' : row.netPnL < 0 ? 'text-[#ef4444] drop-shadow-[0_0_8px_rgba(239,68,68,0.3)]' : 'text-white/30'}>
+                                                    {row.netPnL > 0 ? '+' : ''}${row.netPnL}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr><td colSpan={6} className="px-6 py-8 text-center text-white/20 text-xs italic">No session data available.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
             {/* ── Row 4: Strategy ─────────────────────────────── */}
             <Card className="glass-card p-0 border-none overflow-hidden">
                 <CardHeader className="p-6 pb-2">
@@ -665,6 +867,109 @@ export function Analytics() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* ── Row 5: Psychological & Emotion Correlation ───────────────── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* Emotion Before Trade */}
+                <Card className="glass-card p-0 border-none overflow-hidden">
+                    <CardHeader className="p-6 pb-2">
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <CardDescription className="section-label mb-1">PSYCHOLOGY DEEP-DIVE</CardDescription>
+                                <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
+                                    <Brain size={18} className="text-violet-400" /> Mental State Impact (Before Trade)
+                                </CardTitle>
+                            </div>
+                            <span className="px-3 py-1 rounded-full text-xs font-black font-mono text-violet-400 bg-violet-400/10 border border-violet-400/20">
+                                Mindset Correlation
+                            </span>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-5 pt-2">
+                        <div className="h-[250px]">
+                            {stats.emotionBeforeData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={stats.emotionBeforeData} margin={{ top: 15, right: 8, left: -20, bottom: 5 }}>
+                                        <defs>
+                                            <linearGradient id="emWin" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.9} />
+                                                <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.4} />
+                                            </linearGradient>
+                                            <linearGradient id="emLoss" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.9} />
+                                                <stop offset="100%" stopColor="#f43f5e" stopOpacity={0.4} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.04)" />
+                                        <XAxis dataKey="name" tick={axisStyle} tickLine={false} axisLine={false} tickMargin={8} />
+                                        <YAxis tick={{ ...axisStyle, fill: 'rgba(255,255,255,0.25)', fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={v => `$${v}`} width={55} />
+                                        <ReferenceLine y={0} stroke="rgba(255,255,255,0.12)" strokeDasharray="3 3" />
+                                        <Tooltip {...TOOLTIP_STYLE} formatter={(v: any, _name: any, props: any) => [`$${Number(v).toFixed(2)} (${props.payload.winRate}% WinRate)`, 'Net P&L']} cursor={{ fill: 'rgba(255,255,255,0.02)' }} />
+                                        <Bar dataKey="pnl" radius={[6, 6, 0, 0]}>
+                                            {stats.emotionBeforeData.map((e, i) => (
+                                                <Cell key={i} fill={e.pnl >= 0 ? "url(#emWin)" : "url(#emLoss)"} stroke={e.pnl >= 0 ? "#8b5cf6" : "#f43f5e"} strokeWidth={1} strokeOpacity={0.3} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-white/25 text-xs italic font-mono">No emotional logs yet. Keep journaling emotions on new trades!</div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Emotion After Trade */}
+                <Card className="glass-card p-0 border-none overflow-hidden">
+                    <CardHeader className="p-6 pb-2">
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <CardDescription className="section-label mb-1">BEHAVIORAL INSIGHTS</CardDescription>
+                                <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
+                                    <Brain size={18} className="text-emerald-400" /> Post-Trade Emotional Response
+                                </CardTitle>
+                            </div>
+                            <span className="px-3 py-1 rounded-full text-xs font-black font-mono text-emerald-400 bg-emerald-400/10 border border-emerald-400/20">
+                                Results vs. Feedback
+                            </span>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-5 pt-2">
+                        <div className="h-[250px]">
+                            {stats.emotionAfterData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={stats.emotionAfterData} margin={{ top: 15, right: 8, left: -20, bottom: 5 }}>
+                                        <defs>
+                                            <linearGradient id="emAfterWin" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#10b981" stopOpacity={0.9} />
+                                                <stop offset="100%" stopColor="#10b981" stopOpacity={0.4} />
+                                            </linearGradient>
+                                            <linearGradient id="emAfterLoss" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#ef4444" stopOpacity={0.9} />
+                                                <stop offset="100%" stopColor="#ef4444" stopOpacity={0.4} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.04)" />
+                                        <XAxis dataKey="name" tick={axisStyle} tickLine={false} axisLine={false} tickMargin={8} />
+                                        <YAxis tick={{ ...axisStyle, fill: 'rgba(255,255,255,0.25)', fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={v => `$${v}`} width={55} />
+                                        <ReferenceLine y={0} stroke="rgba(255,255,255,0.12)" strokeDasharray="3 3" />
+                                        <Tooltip {...TOOLTIP_STYLE} formatter={(v: any, _name: any, props: any) => [`$${Number(v).toFixed(2)} (${props.payload.winRate}% WinRate)`, 'Net P&L']} cursor={{ fill: 'rgba(255,255,255,0.02)' }} />
+                                        <Bar dataKey="pnl" radius={[6, 6, 0, 0]}>
+                                            {stats.emotionAfterData.map((e, i) => (
+                                                <Cell key={i} fill={e.pnl >= 0 ? "url(#emAfterWin)" : "url(#emAfterLoss)"} stroke={e.pnl >= 0 ? "#10b981" : "#ef4444"} strokeWidth={1} strokeOpacity={0.3} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-white/25 text-xs italic font-mono">No emotional logs yet. Keep journaling emotions on new trades!</div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+
+            </div>
 
         </div>
     );

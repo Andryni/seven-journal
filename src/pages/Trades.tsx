@@ -152,6 +152,32 @@ export function Trades() {
             header: 'Session',
             cell: info => <span className="text-xs font-semibold" style={{ color: '#06b6d4' }}>{info.getValue()}</span>
         }),
+        columnHelper.accessor('confluence', {
+            header: 'Confluences',
+            cell: info => {
+                const confluences = info.getValue() || [];
+                if (confluences.length === 0) return <span className="text-white/20 text-xs">—</span>;
+                return (
+                    <div className="flex flex-wrap gap-1 max-w-[120px]">
+                        {confluences.slice(0, 2).map((c, i) => <span key={i} className="text-[9px] px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/60 truncate max-w-[80px]">{c}</span>)}
+                        {confluences.length > 2 && <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/40">+{confluences.length - 2}</span>}
+                    </div>
+                );
+            }
+        }),
+        columnHelper.accessor('tags', {
+            header: 'Tags',
+            cell: info => {
+                const tags = info.getValue() || [];
+                if (tags.length === 0) return <span className="text-white/20 text-xs">—</span>;
+                return (
+                    <div className="flex flex-wrap gap-1 max-w-[120px]">
+                        {tags.slice(0, 2).map((t, i) => <span key={i} className="text-[9px] px-1.5 py-0.5 rounded-md text-violet-300 bg-violet-500/10 border border-violet-500/20 truncate max-w-[80px]">#{t}</span>)}
+                        {tags.length > 2 && <span className="text-[9px] px-1.5 py-0.5 rounded-md text-violet-300/50 bg-violet-500/5 border border-violet-500/10">+{tags.length - 2}</span>}
+                    </div>
+                );
+            }
+        }),
         columnHelper.accessor('netPnl', {
             header: 'Net PnL',
             cell: info => {

@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import {
     ArrowLeft, Save, BookOpen as _BookOpen, Shield,
     Target, Brain, Camera, Tag, FileText, ChevronDown, Zap, DollarSign, Percent,
-    Trash2, Upload, X
+    Trash2, Upload, X, ClipboardCheck
 } from 'lucide-react';
 import { useTranslation } from '../hooks/useTranslation';
 import { supabase } from '../lib/supabase';
@@ -311,10 +311,20 @@ export function TradeForm() {
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const activeAccountId = useAuthStore(state => state.currentUser?.activeAccountId);
+    const [disciplineChecks, setDisciplineChecks] = useState([
+        { id: 'risk', label: "Verify Risk (lot size represents max 1-2% risk limit)", checked: false },
+        { id: 'htf', label: "HTF (Higher Timeframe) bias aligns with entry direction", checked: false },
+        { id: 'confluence', label: "At least 3 distinct confluence rules are met", checked: false },
+        { id: 'fomo', label: "Entry trigger is confirmed (no FOMO or impulsive entries)", checked: false }
+    ]);
 
     /* Risk / Gain mode states */
     const [riskMode, setRiskMode] = useState<'currency' | 'percent'>('percent');
     const [gainMode, setGainMode] = useState<'currency' | 'percent'>('percent');
+
+    /* Local states for array text inputs to avoid cursor jumping and losing trailing commas */
+    const [confluenceInput, setConfluenceInput] = useState('');
+    const [tagsInput, setTagsInput] = useState('');
 
     const form = useForm<Trade>({
         resolver: zodResolver(tradeSchema),
@@ -384,6 +394,8 @@ export function TradeForm() {
                 form.reset(existing);
                 setRiskMode(existing.riskPlanned?.mode ?? 'percent');
                 setGainMode(existing.rewardPlanned?.mode ?? 'percent');
+                setConfluenceInput(existing.confluence?.join(', ') || '');
+                setTagsInput(existing.tags?.join(', ') || '');
             }
         } else if (activeAccountId) {
             setValue('accountId', activeAccountId);
@@ -608,6 +620,13 @@ export function TradeForm() {
                             </div>
                         </div>
                     )}
+                    {/* Live risk warning */}
+                    {riskVal && riskMode === 'percent' && riskVal > 3 && (
+                        <div className="flex items-center gap-2 p-3.5 mt-4 rounded-xl text-xs font-semibold text-red-400 bg-red-400/10 border border-red-500/20 animate-pulse-glow">
+                            <Shield size={14} className="shrink-0" />
+                            <span>Warning: You are planned to risk {riskVal}% on this execution. Consider scaling down to maintain premium capital safety.</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* ══ SECTION 3: Confluence & Evidence ════════ */}
@@ -622,7 +641,11 @@ export function TradeForm() {
                                 className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none transition-all focus:border-violet-500/50"
                                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
                                 placeholder={t.tradeForm.confluencesPlaceholder}
-                                onChange={e => setValue('confluence', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                                value={confluenceInput}
+                                onChange={e => {
+                                    setConfluenceInput(e.target.value);
+                                    setValue('confluence', e.target.value.split(',').map(s => s.trim()).filter(Boolean));
+                                }}
                             />
                         </div>
 
@@ -634,7 +657,11 @@ export function TradeForm() {
                                     className="w-full pl-8 pr-3 py-2.5 rounded-xl text-sm text-white outline-none transition-all focus:border-violet-500/50"
                                     style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
                                     placeholder={t.tradeForm.tagsPlaceholder}
-                                    onChange={e => setValue('tags', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                                    value={tagsInput}
+                                    onChange={e => {
+                                        setTagsInput(e.target.value);
+                                        setValue('tags', e.target.value.split(',').map(s => s.trim()).filter(Boolean));
+                                    }}
                                 />
                             </div>
                         </div>
@@ -696,6 +723,43 @@ export function TradeForm() {
                             value={grade}
                             onChange={v => setValue('tradeGrade', (v || null) as Trade['tradeGrade'])}
                         />
+                    </div>
+                </div>
+
+                {/* ── SECTION 4.5: Discipline Verification Checklist ── */}
+                <div className="glass-card p-6">
+                    <SectionHeader icon={ClipboardCheck} label="Discipline Verification Checklist" color="#10b981" />
+                    <p className="text-[11px] text-text-secondary leading-relaxed mb-4">
+                        Confirm these parameters to maintain trading discipline before saving this trade execution.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {disciplineChecks.map(rule => (
+                            <button
+                                key={rule.id}
+                                type="button"
+                                onClick={() => {
+                                    setDisciplineChecks(prev => prev.map(r => r.id === rule.id ? { ...r, checked: !r.checked } : r));
+                                }}
+                                className="flex items-center gap-3.5 p-3.5 rounded-xl text-left transition-all duration-200 border"
+                                style={{
+                                    background: rule.checked ? 'rgba(16,185,129,0.06)' : 'rgba(255,255,255,0.01)',
+                                    borderColor: rule.checked ? 'rgba(16,185,129,0.35)' : 'rgba(255,255,255,0.06)',
+                                }}
+                            >
+                                <div
+                                    className="w-4.5 h-4.5 rounded flex items-center justify-center flex-shrink-0 border"
+                                    style={{
+                                        background: rule.checked ? 'rgba(16,185,129,0.2)' : 'transparent',
+                                        borderColor: rule.checked ? '#10b981' : 'rgba(255,255,255,0.2)',
+                                    }}
+                                >
+                                    {rule.checked && <span className="text-[9px] text-profit font-black">✓</span>}
+                                </div>
+                                <span className="text-xs font-semibold" style={{ color: rule.checked ? '#fff' : 'rgba(255,255,255,0.6)' }}>
+                                    {rule.label}
+                                </span>
+                            </button>
+                        ))}
                     </div>
                 </div>
 

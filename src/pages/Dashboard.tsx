@@ -149,16 +149,25 @@ export function Dashboard() {
         };
     }, [allTrades, activeAccountId, interval]);
 
-    const { totalPnL, winrate, profitFactor, totalTrades } = useMemo(() => {
+    const { totalPnL, winrate, profitFactor, totalTrades, expectancy } = useMemo(() => {
         const totalPnL = closedTrades.reduce((acc, t) => acc + (t.netPnl || 0), 0);
         const winsCount = closedTrades.filter(t => (t.netPnl || 0) > 0).length;
+        const lossCount = closedTrades.filter(t => (t.netPnl || 0) < 0).length;
         const winrate = closedTrades.length > 0 ? (winsCount / closedTrades.length) * 100 : 0;
+        const lossrate = closedTrades.length > 0 ? (lossCount / closedTrades.length) * 100 : 0;
+
         const profitTrades = closedTrades.filter(t => (t.netPnl || 0) > 0);
         const lossTrades = closedTrades.filter(t => (t.netPnl || 0) < 0);
         const totalProfit = profitTrades.reduce((acc, t) => acc + (t.netPnl || 0), 0);
         const totalLoss = Math.abs(lossTrades.reduce((acc, t) => acc + (t.netPnl || 0), 0));
+        
         const profitFactor = totalLoss > 0 ? totalProfit / totalLoss : totalProfit > 0 ? Infinity : 0;
-        return { totalPnL, winrate, profitFactor, totalTrades: closedTrades.length };
+        
+        const avgWin = winsCount > 0 ? totalProfit / winsCount : 0;
+        const avgLoss = lossCount > 0 ? totalLoss / lossCount : 0;
+        const expectancy = ((winrate / 100) * avgWin) - ((lossrate / 100) * avgLoss);
+
+        return { totalPnL, winrate, profitFactor, totalTrades: closedTrades.length, expectancy };
     }, [closedTrades]);
 
     const chartData = useMemo(() => {
@@ -233,11 +242,12 @@ export function Dashboard() {
             </div>
 
             {/* ── KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 <KpiCard title="Net P&L" value={`${isProfit ? '+' : ''}$${Math.abs(totalPnL).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} trend={isProfit ? 'up' : 'down'} Icon={TrendingUp} color={isProfit ? 'profit' : 'loss'} delay="stagger-1" />
                 <KpiCard title={t.dashboard.winRate} value={`${winrate.toFixed(1)}%`} trend={winrate >= 50 ? 'up' : 'down'} Icon={Target} color="primary" delay="stagger-2" />
-                <KpiCard title="Total Trades" value={totalTrades.toString()} trend="up" Icon={Activity} color="cyan" delay="stagger-3" />
-                <KpiCard title="Profit Factor" value={profitFactor === Infinity ? '∞' : profitFactor.toFixed(2)} trend={profitFactor >= 1.5 ? 'up' : 'down'} Icon={Flame} color={profitFactor >= 1.5 ? 'profit' : 'loss'} delay="stagger-4" />
+                <KpiCard title="Expectancy" value={`${expectancy >= 0 ? '+' : ''}$${expectancy.toFixed(2)}`} trend={expectancy >= 0 ? 'up' : 'down'} Icon={Activity} color={expectancy >= 0 ? 'profit' : 'loss'} delay="stagger-3" />
+                <KpiCard title="Total Trades" value={totalTrades.toString()} trend="up" Icon={Activity} color="cyan" delay="stagger-4" />
+                <KpiCard title="Profit Factor" value={profitFactor === Infinity ? '∞' : profitFactor.toFixed(2)} trend={profitFactor >= 1.5 ? 'up' : 'down'} Icon={Flame} color={profitFactor >= 1.5 ? 'profit' : 'loss'} delay="stagger-5" />
             </div>
 
             {/* ── Main Grid */}
