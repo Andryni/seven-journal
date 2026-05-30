@@ -5,7 +5,7 @@ import { Plus, Trash2, Edit2, X, Shield, BookOpen } from 'lucide-react';
 
 export function Playbook() {
     const currentUser = useAuthStore(state => state.currentUser);
-    const setups = usePlaybookStore(state => state.setups.filter(s => s.accountId === currentUser?.activeAccountId));
+    const setups = usePlaybookStore(state => (state.setups || []).filter(s => s && s.accountId === currentUser?.activeAccountId));
     const addSetup = usePlaybookStore(state => state.addSetup);
     const updateSetup = usePlaybookStore(state => state.updateSetup);
     const deleteSetup = usePlaybookStore(state => state.deleteSetup);
@@ -152,13 +152,13 @@ export function Playbook() {
                             <p className="text-xs text-white/50 mb-4 h-8 overflow-hidden">{setup.description || 'No description'}</p>
                             
                             <div className="space-y-1.5">
-                                {setup.rules.slice(0, 3).map((rule, idx) => (
+                                {(setup.rules || []).slice(0, 3).map((rule, idx) => (
                                     <div key={idx} className="flex items-start gap-2 text-xs text-white/80">
                                         <Shield size={12} className="mt-0.5 text-emerald-400 shrink-0" />
                                         <span className="truncate">{rule}</span>
                                     </div>
                                 ))}
-                                {setup.rules.length > 3 && (
+                                {setup.rules && setup.rules.length > 3 && (
                                     <div className="text-[10px] text-white/40 mt-1 italic">
                                         + {setup.rules.length - 3} more rules
                                     </div>
