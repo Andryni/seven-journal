@@ -11,7 +11,7 @@ describe('calculatePnL', () => {
             lotSize: 2,
             commission: 5,
             result: 'TP'
-        } as Trade;
+        } as unknown as Trade;
 
         const result = calculatePnL(trade);
         expect(result.pnl).toBe(20); // (110 - 100) * 2
@@ -26,7 +26,7 @@ describe('calculatePnL', () => {
             lotSize: 2,
             commission: 2,
             result: 'TP'
-        } as Trade;
+        } as unknown as Trade;
 
         const result = calculatePnL(trade);
         expect(result.pnl).toBe(20); // (100 - 90) * 2
@@ -41,7 +41,7 @@ describe('calculatePnL', () => {
             lotSize: 1,
             result: 'TP',
             riskPlanned: { type: '$', value: 10 }
-        } as Trade;
+        } as unknown as Trade;
 
         const result = calculatePnL(trade);
         expect(result.pnl).toBe(20);
@@ -57,7 +57,7 @@ describe('calculatePnL', () => {
             result: 'Running',
             pnl: 20,
             netPnl: 20
-        } as Trade;
+        } as unknown as Trade;
 
         const result = calculatePnL(trade);
         expect(result.pnl).toBeNull();

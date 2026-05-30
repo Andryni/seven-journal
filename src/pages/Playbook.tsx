@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { usePlaybookStore } from '../store/usePlaybookStore';
 import { useAuthStore } from '../store/useAuthStore';
-import { useTranslation } from '../hooks/useTranslation';
-import { Plus, Trash2, Edit2, Check, X, Shield, BookOpen } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, Shield, BookOpen } from 'lucide-react';
 
 export function Playbook() {
-    const { t } = useTranslation();
     const currentUser = useAuthStore(state => state.currentUser);
     const setups = usePlaybookStore(state => state.setups.filter(s => s.accountId === currentUser?.activeAccountId));
     const addSetup = usePlaybookStore(state => state.addSetup);

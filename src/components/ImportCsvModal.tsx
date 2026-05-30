@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useTradeStore } from '../store/useTradeStore';
 import { useAuthStore } from '../store/useAuthStore';
-import { X, Upload, FileText, Check, AlertTriangle, HelpCircle } from 'lucide-react';
+import { X, Upload, FileText, Check, HelpCircle } from 'lucide-react';
 import type { Trade } from '../lib/schemas';
 import { nanoid } from 'nanoid';
 

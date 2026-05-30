@@ -7,7 +7,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { usePlaybookStore } from '../store/usePlaybookStore';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
     ArrowLeft, Save, BookOpen as _BookOpen, Shield,
     Target, Brain, Camera, Tag, FileText, ChevronDown, Zap, DollarSign, Percent,
@@ -954,10 +954,10 @@ export function TradeForm() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {disciplineChecks.map(rule => (
                             <button
-                                key={rule.id}
+                                key={rule.itemId}
                                 type="button"
                                 onClick={() => {
-                                    setDisciplineChecks(prev => prev.map(r => r.id === rule.id ? { ...r, checked: !r.checked } : r));
+                                    setDisciplineChecks(prev => prev.map(r => r.itemId === rule.itemId ? { ...r, checked: !r.checked } : r));
                                 }}
                                 className="flex items-center gap-3.5 p-3.5 rounded-xl text-left transition-all duration-200 border"
                                 style={{
