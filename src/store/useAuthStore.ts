@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { idbStorage } from '../lib/idbStorage';
 import type { User, TradingAccount, UserGoals, TradingPlanChecklist } from '../lib/authSchemas';
 import { supabase } from '../lib/supabase';
 
@@ -385,6 +386,7 @@ export const useAuthStore = create<AuthState>()(
         }),
         {
             name: 'seven-journal-auth',
+            storage: createJSONStorage(() => idbStorage),
         }
     )
 );

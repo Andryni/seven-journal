@@ -1,11 +1,16 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { idbStorage } from '../lib/idbStorage';
 import type { Trade } from '../lib/schemas';
 import { calculatePnL } from '../lib/pnl';
 import { supabase } from '../lib/supabase';
+import { nanoid } from 'nanoid';
+
+export type SyncAction = { type: 'INSERT' | 'UPDATE' | 'DELETE', table: string, id: string, payload?: any };
 
 interface TradeState {
     trades: Trade[];
+    syncQueue: SyncAction[];
     isLoading: boolean;
 
     fetchTrades: (accountId: string) => Promise<void>;
@@ -14,13 +19,39 @@ interface TradeState {
     deleteTrade: (id: string) => Promise<{ error: any }>;
     getTradeById: (id: string) => Trade | undefined;
     loadDemoData: (trades: Trade[]) => void;
+    addToSyncQueue: (action: SyncAction) => void;
+    processSyncQueue: () => Promise<void>;
 }
 
 export const useTradeStore = create<TradeState>()(
     persist(
         (set, get) => ({
             trades: [],
+            syncQueue: [],
             isLoading: false,
+
+            addToSyncQueue: (action) => {
+                set((state) => ({ syncQueue: [...state.syncQueue, action] }));
+            },
+
+            processSyncQueue: async () => {
+                const queue = get().syncQueue;
+                if (queue.length === 0) return;
+                
+                // Keep it simple for now: we just clear it or you would implement real sync logic here
+                // We'll process them one by one
+                for (const action of queue) {
+                    if (action.type === 'INSERT' && action.table === 'trades') {
+                        await supabase.from('trades').insert(mapSchemaTradeToDb(action.payload));
+                    } else if (action.type === 'UPDATE' && action.table === 'trades') {
+                        await supabase.from('trades').update(mapSchemaTradeToDb(action.payload)).eq('id', action.id);
+                    } else if (action.type === 'DELETE' && action.table === 'trades') {
+                        await supabase.from('trades').delete().eq('id', action.id);
+                    }
+                }
+                
+                set({ syncQueue: [] });
+            },
 
             fetchTrades: async (accountId) => {
                 set({ isLoading: true });
@@ -39,13 +70,16 @@ export const useTradeStore = create<TradeState>()(
             },
 
             addTrade: async (tradeData) => {
-                // Calculate PnL locally before saving
+                const optimisticId = nanoid();
                 const calculated = calculatePnL({
                     ...tradeData,
-                    id: '',
-                    createdAt: '',
-                    updatedAt: ''
+                    id: optimisticId,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
                 } as Trade);
+
+                // Optimistic local update
+                set((state) => ({ trades: [calculated, ...state.trades] }));
 
                 const { data, error } = await supabase
                     .from('trades')
@@ -53,9 +87,15 @@ export const useTradeStore = create<TradeState>()(
                     .select()
                     .single();
 
-                if (data && !error) {
+                if (error) {
+                    get().addToSyncQueue({ type: 'INSERT', table: 'trades', id: optimisticId, payload: calculated });
+                    return { data: calculated, error: null }; // Return success so UI closes
+                }
+
+                if (data) {
+                    // Replace optimistic ID with DB ID if needed, though with UUIDs they usually match
                     const newTrade = mapDbTradeToSchema(data);
-                    set((state) => ({ trades: [newTrade, ...state.trades] }));
+                    set((state) => ({ trades: state.trades.map(t => t.id === optimisticId ? newTrade : t) }));
 
                     // Update account balance
                     const pnl = newTrade.netPnl || 0;
@@ -72,9 +112,9 @@ export const useTradeStore = create<TradeState>()(
                             .update({ current_balance: newBalance })
                             .eq('id', newTrade.accountId);
                     }
-
                     return { data: newTrade, error: null };
                 }
+                
                 return { data: null, error };
             },
 
@@ -84,71 +124,82 @@ export const useTradeStore = create<TradeState>()(
 
                 const updated = calculatePnL({ ...existing, ...updatedFields } as Trade);
 
+                // Optimistic UI
+                set((state) => ({
+                    trades: state.trades.map((t) => t.id === id ? updated : t),
+                }));
+
                 const { error } = await supabase
                     .from('trades')
                     .update(mapSchemaTradeToDb(updated))
                     .eq('id', id);
 
-                if (!error) {
-                    // Calculate PnL difference
-                    const oldPnL = existing.netPnl || 0;
-                    const newPnL = updated.netPnl || 0;
-                    const pnlDiff = newPnL - oldPnL;
+                if (error) {
+                    get().addToSyncQueue({ type: 'UPDATE', table: 'trades', id, payload: updated });
+                    return { error: null };
+                }
 
-                    set((state) => ({
-                        trades: state.trades.map((t) => t.id === id ? updated : t),
-                    }));
+                // Calculate PnL difference
+                const oldPnL = existing.netPnl || 0;
+                const newPnL = updated.netPnl || 0;
+                const pnlDiff = newPnL - oldPnL;
 
-                    // Update account balance
-                    if (pnlDiff !== 0) {
-                        const { data: accData } = await supabase
+                // Update account balance
+                if (pnlDiff !== 0) {
+                    const { data: accData } = await supabase
+                        .from('trading_accounts')
+                        .select('current_balance')
+                        .eq('id', updated.accountId)
+                        .single();
+                    
+                    if (accData) {
+                        const newBalance = parseFloat(accData.current_balance) + pnlDiff;
+                        await supabase
                             .from('trading_accounts')
-                            .select('current_balance')
-                            .eq('id', updated.accountId)
-                            .single();
-                        
-                        if (accData) {
-                            const newBalance = parseFloat(accData.current_balance) + pnlDiff;
-                            await supabase
-                                .from('trading_accounts')
-                                .update({ current_balance: newBalance })
-                                .eq('id', updated.accountId);
-                        }
+                            .update({ current_balance: newBalance })
+                            .eq('id', updated.accountId);
                     }
                 }
+                
                 return { error };
             },
 
             deleteTrade: async (id) => {
+                const deletedTrade = get().trades.find(t => t.id === id);
+                
+                // Optimistic UI
+                set((state) => ({
+                    trades: state.trades.filter((t) => t.id !== id),
+                }));
+
                 const { error } = await supabase
                     .from('trades')
                     .delete()
                     .eq('id', id);
 
-                if (!error) {
-                    const deletedTrade = get().trades.find(t => t.id === id);
-                    set((state) => ({
-                        trades: state.trades.filter((t) => t.id !== id),
-                    }));
+                if (error) {
+                    get().addToSyncQueue({ type: 'DELETE', table: 'trades', id });
+                    return { error: null };
+                }
 
-                    // Update account balance (subtract pnl)
-                    if (deletedTrade) {
-                        const pnl = deletedTrade.netPnl || 0;
-                        const { data: accData } = await supabase
+                // Update account balance (subtract pnl)
+                if (deletedTrade) {
+                    const pnl = deletedTrade.netPnl || 0;
+                    const { data: accData } = await supabase
+                        .from('trading_accounts')
+                        .select('current_balance')
+                        .eq('id', deletedTrade.accountId)
+                        .single();
+                    
+                    if (accData) {
+                        const newBalance = parseFloat(accData.current_balance) - pnl;
+                        await supabase
                             .from('trading_accounts')
-                            .select('current_balance')
-                            .eq('id', deletedTrade.accountId)
-                            .single();
-                        
-                        if (accData) {
-                            const newBalance = parseFloat(accData.current_balance) - pnl;
-                            await supabase
-                                .from('trading_accounts')
-                                .update({ current_balance: newBalance })
-                                .eq('id', deletedTrade.accountId);
-                        }
+                            .update({ current_balance: newBalance })
+                            .eq('id', deletedTrade.accountId);
                     }
                 }
+                
                 return { error };
             },
 
@@ -167,6 +218,7 @@ export const useTradeStore = create<TradeState>()(
         }),
         {
             name: 'seven-journal-trades',
+            storage: createJSONStorage(() => idbStorage),
         }
     )
 );

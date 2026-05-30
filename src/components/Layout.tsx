@@ -12,6 +12,7 @@ const NAV_ITEMS = (t: any) => [
     { to: '/app/calendar', label: t.common.calendar, Icon: CalendarIcon, exact: false },
     { to: '/app/analytics', label: t.common.analytics, Icon: BarChart2, exact: false },
     { to: '/app/debrief', label: t.navigation.debriefs, Icon: BookOpen, exact: false },
+    { to: '/app/playbook', label: 'Playbook', Icon: ClipboardCheck, exact: false },
     { to: '/app/reports', label: t.navigation.reports || 'Reports', Icon: TrendingUp, exact: false },
     { to: '/app/settings', label: t.common.settings, Icon: Settings, exact: true },
 ];

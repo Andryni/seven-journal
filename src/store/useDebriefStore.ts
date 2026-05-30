@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { idbStorage } from '../lib/idbStorage';
 import type { Debrief } from '../lib/schemas';
 import { supabase } from '../lib/supabase';
 
@@ -83,6 +84,7 @@ export const useDebriefStore = create<DebriefState>()(
         }),
         {
             name: 'seven-journal-debriefs',
+            storage: createJSONStorage(() => idbStorage),
         }
     )
 );

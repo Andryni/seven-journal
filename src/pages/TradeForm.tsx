@@ -5,6 +5,7 @@ import type { Trade } from '../lib/schemas';
 import { useTradeStore } from '../store/useTradeStore';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
+import { usePlaybookStore } from '../store/usePlaybookStore';
 
 import { useEffect, useState } from 'react';
 import {
@@ -311,12 +312,18 @@ export function TradeForm() {
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const activeAccountId = useAuthStore(state => state.currentUser?.activeAccountId);
+    const accounts = useAuthStore(state => state.accounts);
+    const activeAccount = accounts.find(a => a.id === activeAccountId);
+    const accountBalance = activeAccount?.currentBalance ?? 10000;
+
     const [disciplineChecks, setDisciplineChecks] = useState([
-        { id: 'risk', label: "Verify Risk (lot size represents max 1-2% risk limit)", checked: false },
-        { id: 'htf', label: "HTF (Higher Timeframe) bias aligns with entry direction", checked: false },
-        { id: 'confluence', label: "At least 3 distinct confluence rules are met", checked: false },
-        { id: 'fomo', label: "Entry trigger is confirmed (no FOMO or impulsive entries)", checked: false }
+        { itemId: 'risk', label: "Verify Risk (lot size represents max 1-2% risk limit)", checked: false },
+        { itemId: 'htf', label: "HTF (Higher Timeframe) bias aligns with entry direction", checked: false },
+        { itemId: 'confluence', label: "At least 3 distinct confluence rules are met", checked: false },
+        { itemId: 'fomo', label: "Entry trigger is confirmed (no FOMO or impulsive entries)", checked: false }
     ]);
+
+    const playbookSetups = usePlaybookStore(state => state.setups.filter(s => s.accountId === activeAccountId));
 
     /* Risk / Gain mode states */
     const [riskMode, setRiskMode] = useState<'currency' | 'percent'>('percent');
@@ -396,6 +403,9 @@ export function TradeForm() {
                 setGainMode(existing.rewardPlanned?.mode ?? 'percent');
                 setConfluenceInput(existing.confluence?.join(', ') || '');
                 setTagsInput(existing.tags?.join(', ') || '');
+                if (existing.checklistSnapshot && existing.checklistSnapshot.length > 0) {
+                    setDisciplineChecks(existing.checklistSnapshot);
+                }
             }
         } else if (activeAccountId) {
             setValue('accountId', activeAccountId);
@@ -410,6 +420,39 @@ export function TradeForm() {
     const grade = watch('tradeGrade') ?? '';
     const plannedRR = watch('plannedRR');
     const netPnl = watch('netPnl');
+    
+    // Real-time risk watchers
+    const entryPrice = watch('entryPrice');
+    const stopLoss = watch('stopLoss');
+    const lotSize = watch('lotSize');
+    const pair = watch('pair');
+
+    const calculatedRiskUsd = useMemo(() => {
+        if (!entryPrice || !stopLoss || !lotSize) return 0;
+        const diff = Math.abs(entryPrice - stopLoss);
+        const pairUpper = (pair || 'XAUUSD').toUpperCase();
+        let multiplier = 1;
+        
+        if (pairUpper.includes('XAU') || pairUpper.includes('GOLD')) {
+            multiplier = 100;
+        } else if (
+            pairUpper.includes('EUR') || pairUpper.includes('GBP') || pairUpper.includes('USD') || 
+            pairUpper.includes('JPY') || pairUpper.includes('CHF') || pairUpper.includes('CAD') || 
+            pairUpper.includes('AUD') || pairUpper.includes('NZD')
+        ) {
+            if (pairUpper.includes('JPY')) {
+                multiplier = 1000;
+            } else {
+                multiplier = 100000;
+            }
+        }
+        return parseFloat((diff * multiplier * lotSize).toFixed(2));
+    }, [entryPrice, stopLoss, lotSize, pair]);
+
+    const calculatedRiskPct = useMemo(() => {
+        if (!calculatedRiskUsd || !accountBalance) return 0;
+        return parseFloat(((calculatedRiskUsd / accountBalance) * 100).toFixed(2));
+    }, [calculatedRiskUsd, accountBalance]);
 
     const onInvalid = (errs: any) => {
         console.error('Form validation failed:', errs);
@@ -424,6 +467,7 @@ export function TradeForm() {
         const now = new Date().toISOString();
         data.updatedAt = now;
         data.accountId = activeAccountId;
+        data.checklistSnapshot = disciplineChecks;
 
         try {
             console.log('Saving trade...', data);
@@ -484,6 +528,38 @@ export function TradeForm() {
                 {/* ══ SECTION 1: Trade Setup ══════════════════ */}
                 <div className="glass-card p-6">
                     <SectionHeader icon={Zap} label={t.tradeForm.logTrade.split(' ')[1] || 'Setup'} color="#06b6d4" />
+
+                    {playbookSetups.length > 0 && (
+                        <div className="mb-5 p-4 rounded-xl border border-white/5 bg-white/[0.01]">
+                            <Label>Playbook Setup (Renseigne automatiquement la stratégie et la checklist)</Label>
+                            <div className="relative">
+                                <select 
+                                    onChange={e => {
+                                        const selectedId = e.target.value;
+                                        if (selectedId) {
+                                            const setup = playbookSetups.find(s => s.id === selectedId);
+                                            if (setup) {
+                                                setValue('strategy', setup.name);
+                                                const newChecks = setup.rules.map((rule, idx) => ({
+                                                    itemId: `rule_${idx}`,
+                                                    label: rule,
+                                                    checked: false
+                                                }));
+                                                setDisciplineChecks(newChecks);
+                                            }
+                                        }
+                                    }}
+                                    className="w-full px-3 py-2.5 pr-8 rounded-xl text-sm text-white outline-none appearance-none transition-all focus:border-violet-500/50"
+                                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                    <option value="">-- Sélectionnez un setup Playbook --</option>
+                                    {playbookSetups.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name} ({s.rules.length} règles)</option>
+                                    ))}
+                                </select>
+                                <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'rgba(255,255,255,0.4)' }} />
+                            </div>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {/* Pair */}
@@ -576,6 +652,149 @@ export function TradeForm() {
                                     placeholder="0.00"
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold" style={{ color: 'rgba(167,139,250,0.5)' }}>R</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Execution Parameters */}
+                    <div className="mt-6 pt-6 border-t border-white/5">
+                        <Label>Paramètres d'Exécution</Label>
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-2">
+                            {/* Entry Price */}
+                            <div>
+                                <Label>Prix d'Entrée</Label>
+                                <input type="number" step="any" min="0"
+                                    {...register('entryPrice', { valueAsNumber: true })}
+                                    placeholder="0.0000"
+                                    className="w-full px-3 py-2.5 rounded-xl text-sm font-mono text-white bg-white/[0.04] border border-white/[0.08] outline-none transition-all focus:border-violet-500/50"
+                                />
+                                <ErrorMsg msg={errors.entryPrice?.message} />
+                            </div>
+
+                            {/* Stop Loss */}
+                            <div>
+                                <Label>Stop Loss (SL)</Label>
+                                <input type="number" step="any" min="0"
+                                    {...register('stopLoss', { valueAsNumber: true })}
+                                    placeholder="0.0000"
+                                    className="w-full px-3 py-2.5 rounded-xl text-sm font-mono text-white bg-white/[0.04] border border-white/[0.08] outline-none transition-all focus:border-violet-500/50"
+                                />
+                                <ErrorMsg msg={errors.stopLoss?.message} />
+                            </div>
+
+                            {/* Take Profit (TP) */}
+                            <div>
+                                <Label>Take Profit (TP)</Label>
+                                <input type="number" step="any" min="0"
+                                    {...register('takeProfit', { valueAsNumber: true })}
+                                    placeholder="0.0000"
+                                    className="w-full px-3 py-2.5 rounded-xl text-sm font-mono text-white bg-white/[0.04] border border-white/[0.08] outline-none transition-all focus:border-violet-500/50"
+                                />
+                                <ErrorMsg msg={errors.takeProfit?.message} />
+                            </div>
+
+                            {/* Lot Size */}
+                            <div>
+                                <Label>Taille de Lot</Label>
+                                <input type="number" step="any" min="0"
+                                    {...register('lotSize', { valueAsNumber: true })}
+                                    placeholder="1.0"
+                                    className="w-full px-3 py-2.5 rounded-xl text-sm font-mono font-bold text-white bg-white/[0.04] border border-white/[0.08] outline-none transition-all focus:border-violet-500/50"
+                                />
+                                <ErrorMsg msg={errors.lotSize?.message} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Live Risk Estimation & Lot Calculator */}
+                    <div className="mt-6 p-4 rounded-xl border border-dashed border-violet-500/20 bg-violet-500/[0.02] space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-violet-500 animate-pulse" />
+                                <span className="text-[11px] font-black uppercase tracking-wider text-violet-300">Évaluateur de Risque & Calculateur de Lot</span>
+                            </div>
+                            {calculatedRiskUsd > 0 && (
+                                <div className="text-right">
+                                    <span className="text-xs font-bold text-violet-400 font-mono">${calculatedRiskUsd}</span>
+                                    <span className="text-[10px] text-white/40 font-mono ml-1.5">({calculatedRiskPct}% du capital)</span>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-2">
+                            <div>
+                                <label className="block text-[9px] uppercase tracking-wider font-bold text-white/40 mb-1">Capital du Compte ($)</label>
+                                <div className="text-xs font-bold text-white/80 font-mono p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.05]">
+                                    ${accountBalance.toLocaleString()}
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label className="block text-[9px] uppercase tracking-wider font-bold text-white/40 mb-1">Risque Souhaité (%)</label>
+                                <div className="text-xs font-bold text-white/80 font-mono p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.05]">
+                                    {riskVal || 1}% (${(accountBalance * (riskVal || 1) / 100).toLocaleString()})
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-[9px] uppercase tracking-wider font-bold text-white/40 mb-1">Lot Suggéré</label>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (entryPrice && stopLoss && entryPrice !== stopLoss) {
+                                            const targetRiskUsd = accountBalance * (riskVal || 1) / 100;
+                                            const diff = Math.abs(entryPrice - stopLoss);
+                                            const pairUpper = (pair || 'XAUUSD').toUpperCase();
+                                            let multiplier = 1;
+                                            if (pairUpper.includes('XAU') || pairUpper.includes('GOLD')) {
+                                                multiplier = 100;
+                                            } else if (
+                                                pairUpper.includes('EUR') || pairUpper.includes('GBP') || pairUpper.includes('USD') || 
+                                                pairUpper.includes('JPY') || pairUpper.includes('CHF') || pairUpper.includes('CAD') || 
+                                                pairUpper.includes('AUD') || pairUpper.includes('NZD')
+                                            ) {
+                                                if (pairUpper.includes('JPY')) {
+                                                    multiplier = 1000;
+                                                } else {
+                                                    multiplier = 100000;
+                                                }
+                                            }
+                                            const suggestedLots = targetRiskUsd / (diff * multiplier);
+                                            if (suggestedLots > 0 && isFinite(suggestedLots)) {
+                                                setValue('lotSize', parseFloat(suggestedLots.toFixed(2)));
+                                            }
+                                        } else {
+                                            alert("Veuillez saisir un Prix d'Entrée et un Stop Loss valides pour calculer la taille de lot suggérée.");
+                                        }
+                                    }}
+                                    className="w-full text-left flex items-center justify-between text-xs font-bold px-2.5 py-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 border border-violet-500/20 transition-all"
+                                >
+                                    <span>Calculer & Appliquer</span>
+                                    <span className="font-mono bg-violet-500/20 px-1.5 py-0.5 rounded text-[10px]">
+                                        {(() => {
+                                            if (!entryPrice || !stopLoss || entryPrice === stopLoss) return '--';
+                                            const targetRiskUsd = accountBalance * (riskVal || 1) / 100;
+                                            const diff = Math.abs(entryPrice - stopLoss);
+                                            const pairUpper = (pair || 'XAUUSD').toUpperCase();
+                                            let multiplier = 1;
+                                            if (pairUpper.includes('XAU') || pairUpper.includes('GOLD')) {
+                                                multiplier = 100;
+                                            } else if (
+                                                pairUpper.includes('EUR') || pairUpper.includes('GBP') || pairUpper.includes('USD') || 
+                                                pairUpper.includes('JPY') || pairUpper.includes('CHF') || pairUpper.includes('CAD') || 
+                                                pairUpper.includes('AUD') || pairUpper.includes('NZD')
+                                            ) {
+                                                if (pairUpper.includes('JPY')) {
+                                                    multiplier = 1000;
+                                                } else {
+                                                    multiplier = 100000;
+                                                }
+                                            }
+                                            const sugg = targetRiskUsd / (diff * multiplier);
+                                            return isFinite(sugg) && sugg > 0 ? sugg.toFixed(2) + ' Lot' : '--';
+                                        })()}
+                                    </span>
+                                </button>
                             </div>
                         </div>
                     </div>

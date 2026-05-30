@@ -11,9 +11,10 @@ import { Link } from 'react-router-dom';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import {
     Trash2, Edit2, ExternalLink, ChevronUp, ChevronDown, Plus, BookOpen,
-    ChevronLeft, ChevronRight, Filter, X, Search, SlidersHorizontal
+    ChevronLeft, ChevronRight, Filter, X, Search, SlidersHorizontal, Upload
 } from 'lucide-react';
 import { useTranslation } from '../hooks/useTranslation';
+import { ImportCsvModal } from '../components/ImportCsvModal';
 
 const columnHelper = createColumnHelper<Trade>();
 
@@ -60,6 +61,7 @@ export function Trades() {
     const { t } = useTranslation();
     const [sorting, setSorting] = useState<SortingState>([]);
     const [showFilters, setShowFilters] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
     const filterRef = useRef<HTMLDivElement>(null);
 
     /* filters */
@@ -256,9 +258,19 @@ export function Trades() {
                         {t.trades.allTrades}
                     </h2>
                 </div>
-                <Link to="/app/trades/new" className="btn-primary">
-                    <Plus size={15} /> {t.trades.addTrade}
-                </Link>
+                <div className="flex items-center gap-3">
+                    <button 
+                        onClick={() => setShowImportModal(true)} 
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all text-white border border-white/10 hover:bg-white/5" 
+                        style={{ background: 'rgba(255,255,255,0.03)' }}
+                    >
+                        <Upload size={14} className="text-violet-400" />
+                        Import CSV
+                    </button>
+                    <Link to="/app/trades/new" className="btn-primary">
+                        <Plus size={15} /> {t.trades.addTrade}
+                    </Link>
+                </div>
             </div>
 
             {/* ── Search + Filter bar */}
@@ -477,6 +489,11 @@ export function Trades() {
                     </div>
                 )}
             </div>
+
+            <ImportCsvModal 
+                isOpen={showImportModal} 
+                onClose={() => setShowImportModal(false)} 
+            />
         </div>
     );
 }
